@@ -1,0 +1,45 @@
+import { NextResponse } from 'next/server'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth'
+import { prisma } from '@/lib/db'
+
+export async function GET() {
+  const session = await getServerSession(authOptions)
+  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const isGestor = session.user.role === 'gestor'
+
+  const clients = await prisma.client.findMany({
+    where: isGestor ? undefined : { assignedTo: session.user.id },
+    include: { contacts: { orderBy: { isPrimary: 'desc' } } },
+    orderBy: { createdAt: 'desc' },
+  })
+
+  return NextResponse.json(clients)
+}
+
+export async function POST(req: Request) {
+  const session = await getServerSession(authOptions)
+  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const body = await req.json()
+
+  const client = await prisma.client.create({
+    data: {
+      name: body.name,
+      razaoSocial: body.razao_social ?? null,
+      cnpj: body.cnpj ?? null,
+      site: body.site ?? null,
+      segment: body.segment ?? null,
+      address: body.address ?? null,
+      source: body.source ?? 'outro',
+      temperature: body.temperature ?? 'morno',
+      status: body.status ?? 'lead',
+      responsibleName: body.responsible_name ?? null,
+      assignedTo: body.assigned_to ?? session.user.id,
+    },
+    include: { contacts: true },
+  })
+
+  return NextResponse.json(client, { status: 201 })
+}

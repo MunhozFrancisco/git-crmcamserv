@@ -1,0 +1,263 @@
+// ============================================================
+//  CAMSERV CRM — Prisma Schema
+//  ORM: Prisma  |  DB: PostgreSQL
+// ============================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ── Enums ────────────────────────────────────────────────────
+
+enum UserRole {
+  gestor
+  vendedor
+}
+
+enum ClientStatus {
+  lead
+  cliente
+}
+
+enum ClientSource {
+  indicacao   @map("indicação")
+  site
+  linkedin
+  evento
+  cold_call   @map("cold-call")
+  outro
+}
+
+enum Temperature {
+  frio
+  morno
+  quente
+}
+
+enum OpportunityStatus {
+  aberta
+  ganha
+  perdida
+}
+
+enum RiskLevel {
+  baixo
+  medio
+  alto
+}
+
+enum ActivityType {
+  ligacao   @map("ligação")
+  email
+  reuniao   @map("reunião")
+  whatsapp
+  tarefa
+}
+
+enum TaskPriority {
+  baixa
+  media
+  alta
+}
+
+enum TaskType {
+  ligacao   @map("ligação")
+  email
+  reuniao   @map("reunião")
+  whatsapp
+  outro
+}
+
+enum ProductType {
+  produto
+  servico   @map("serviço")
+}
+
+enum ProductCategory {
+  Software
+  Hardware
+  Consultoria
+  Suporte
+  Treinamento
+  Infraestrutura
+  Outro
+}
+
+enum AlertType {
+  warning
+  danger
+  info
+}
+
+// ── Models ───────────────────────────────────────────────────
+
+model User {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name         String
+  email        String   @unique
+  passwordHash String   @map("password_hash")
+  role         UserRole @default(vendedor)
+  meta         Decimal  @default(0) @db.Decimal(12, 2)
+  avatar       String?
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  // Relações
+  clients       Client[]
+  opportunities Opportunity[]
+  activities    Activity[]
+  tasks         Task[]
+
+  @@map("users")
+}
+
+model Stage {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name        String
+  orderIndex  Int      @map("order_index")
+  probability Int
+  color       String
+  bgColor     String   @map("bg_color")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  opportunities Opportunity[]
+
+  @@map("stages")
+}
+
+model Client {
+  id              String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  status          ClientStatus @default(lead)
+  name            String
+  razaoSocial     String?      @map("razao_social")
+  cnpj            String?
+  site            String?
+  segment         String?
+  address         String?
+  source          ClientSource @default(outro)
+  temperature     Temperature  @default(morno)
+  responsibleName String?      @map("responsible_name")
+  assignedTo      String       @map("assigned_to") @db.Uuid
+  createdAt       DateTime     @default(now()) @map("created_at")
+  updatedAt       DateTime     @updatedAt @map("updated_at")
+
+  // Relações
+  assignee      User          @relation(fields: [assignedTo], references: [id])
+  contacts      Contact[]
+  opportunities Opportunity[]
+  tasks         Task[]
+
+  @@map("clients")
+}
+
+model Contact {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  clientId   String   @map("client_id") @db.Uuid
+  name       String
+  cargo      String?
+  department String?
+  email      String?
+  phone      String?
+  whatsapp   String?
+  isPrimary  Boolean  @default(false) @map("is_primary")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  client Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@map("contacts")
+}
+
+model Opportunity {
+  id                String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  clientId          String            @map("client_id") @db.Uuid
+  stageId           String            @map("stage_id") @db.Uuid
+  value             Decimal           @default(0) @db.Decimal(12, 2)
+  status            OpportunityStatus @default(aberta)
+  assignedTo        String            @map("assigned_to") @db.Uuid
+  score             Int               @default(50)
+  riskLevel         RiskLevel         @default(medio) @map("risk_level")
+  expectedCloseDate DateTime?         @map("expected_close_date") @db.Date
+  lastInteraction   DateTime          @default(now()) @map("last_interaction") @db.Date
+  createdAt         DateTime          @default(now()) @map("created_at")
+  updatedAt         DateTime          @updatedAt @map("updated_at")
+
+  client     Client     @relation(fields: [clientId], references: [id])
+  stage      Stage      @relation(fields: [stageId], references: [id])
+  assignee   User       @relation(fields: [assignedTo], references: [id])
+  activities Activity[]
+  tasks      Task[]
+  alerts     Alert[]
+
+  @@map("opportunities")
+}
+
+model Activity {
+  id            String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  opportunityId String       @map("opportunity_id") @db.Uuid
+  userId        String       @map("user_id") @db.Uuid
+  type          ActivityType
+  description   String
+  createdAt     DateTime     @default(now()) @map("created_at")
+
+  opportunity Opportunity @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+  user        User        @relation(fields: [userId], references: [id])
+
+  @@map("activities")
+}
+
+model Task {
+  id            String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  title         String
+  opportunityId String?      @map("opportunity_id") @db.Uuid
+  clientId      String?      @map("client_id") @db.Uuid
+  assignedTo    String       @map("assigned_to") @db.Uuid
+  dueDate       DateTime     @map("due_date") @db.Date
+  done          Boolean      @default(false)
+  doneAt        DateTime?    @map("done_at")
+  priority      TaskPriority @default(media)
+  type          TaskType     @default(outro)
+  createdAt     DateTime     @default(now()) @map("created_at")
+  updatedAt     DateTime     @updatedAt @map("updated_at")
+
+  opportunity Opportunity? @relation(fields: [opportunityId], references: [id], onDelete: SetNull)
+  client      Client?      @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  assignee    User         @relation(fields: [assignedTo], references: [id])
+
+  @@map("tasks")
+}
+
+model Product {
+  id          String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name        String
+  description String?
+  type        ProductType
+  category    ProductCategory
+  price       Decimal         @default(0) @db.Decimal(12, 2)
+  unit        String          @default("único")
+  active      Boolean         @default(true)
+  createdAt   DateTime        @default(now()) @map("created_at")
+  updatedAt   DateTime        @updatedAt @map("updated_at")
+
+  @@map("products")
+}
+
+model Alert {
+  id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  opportunityId String    @map("opportunity_id") @db.Uuid
+  message       String
+  type          AlertType @default(info)
+  resolved      Boolean   @default(false)
+  resolvedAt    DateTime? @map("resolved_at")
+  createdAt     DateTime  @default(now()) @map("created_at")
+
+  opportunity Opportunity @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+
+  @@map("alerts")
+}
