@@ -1,11 +1,12 @@
 [phases.setup]
-nixPkgs = ["nodejs_18", "npm-9_x"]
+nixPkgs = ["nodejs_18"]
 
 [phases.install]
-cmds = ["npm install --legacy-peer-deps"]
+cmds = ["npm install --legacy-peer-deps --no-audit --prefer-offline"]
 
 [phases.build]
 cmds = ["npm run build"]
 
 [start]
 cmd = "npm run start"
+
