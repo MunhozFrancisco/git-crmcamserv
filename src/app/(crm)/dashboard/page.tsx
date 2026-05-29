@@ -3,7 +3,7 @@
 import { useUser } from '@/contexts/user-context'
 import { Header } from '@/components/layout/header'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
+import { Badge } from '@/components/ui/Badge'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import {
   TrendingUp, AlertTriangle, Trophy, Clock, DollarSign, ArrowRight, CheckSquare,

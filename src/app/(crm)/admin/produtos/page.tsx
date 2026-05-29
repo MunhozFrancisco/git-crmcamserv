@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { Header } from '@/components/layout/header'
 import { Card, CardContent } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
+import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -267,9 +267,8 @@ export default function ProdutosPage() {
               <CardContent className="pt-4">
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex items-center gap-2.5">
-                    <div className={`h-9 w-9 rounded-lg flex items-center justify-center shrink-0 ${
-                      product.type === 'serviço' ? 'bg-indigo-100' : 'bg-slate-100'
-                    }`}>
+                    <div className={`h-9 w-9 rounded-lg flex items-center justify-center shrink-0 ${product.type === 'serviço' ? 'bg-indigo-100' : 'bg-slate-100'
+                      }`}>
                       {product.type === 'serviço'
                         ? <Wrench className="h-4 w-4 text-indigo-600" />
                         : <Package className="h-4 w-4 text-slate-600" />

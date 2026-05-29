@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { useUser } from '@/contexts/user-context'
 import { Header } from '@/components/layout/header'
 import { Card, CardContent } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
+import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -31,8 +31,8 @@ const vendedores = USERS.filter(u => u.role === 'vendedor')
 
 const temperatureConfig = {
   quente: { label: 'Quente', color: 'text-red-600 bg-red-50 border-red-100', dot: 'bg-red-500', icon: '🔥' },
-  morno:  { label: 'Morno',  color: 'text-amber-600 bg-amber-50 border-amber-100', dot: 'bg-amber-400', icon: '🌤' },
-  frio:   { label: 'Frio',   color: 'text-blue-600 bg-blue-50 border-blue-100', dot: 'bg-blue-400', icon: '🧊' },
+  morno: { label: 'Morno', color: 'text-amber-600 bg-amber-50 border-amber-100', dot: 'bg-amber-400', icon: '🌤' },
+  frio: { label: 'Frio', color: 'text-blue-600 bg-blue-50 border-blue-100', dot: 'bg-blue-400', icon: '🧊' },
 }
 
 function formatCNPJ(v: string) {

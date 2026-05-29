@@ -100,7 +100,7 @@ export function Sidebar() {
         )}
       </nav>
 
-      {/* Role badge for vendedor */}
+      {/* Role Badge for vendedor */}
       {!isGestor && (
         <div className="px-4 pb-2">
           <div className="rounded-lg bg-slate-800 px-3 py-2 text-center">

@@ -1,6 +1,6 @@
 import { Header } from '@/components/layout/header'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
+import { Badge } from '@/components/ui/Badge'
 import { ALERTS, OPPORTUNITIES, SELLER_STATS } from '@/lib/mock-data'
 import { formatCurrency, daysSince, cn } from '@/lib/utils'
 import { Sparkles, AlertTriangle, TrendingUp, Brain, Zap, Clock } from 'lucide-react'
