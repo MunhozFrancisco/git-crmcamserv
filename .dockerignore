@@ -3,3 +3,9 @@ node_modules
 .github
 .git
 
+
+.env
+.env.*
+!.env.example
+
+
