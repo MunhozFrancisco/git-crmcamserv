@@ -6,7 +6,7 @@
     "dev": "next dev",
     "build": "prisma generate && next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "tsc --noEmit --pretty false"
   },
   "dependencies": {
     "@hello-pangea/dnd": "^16.6.0",
