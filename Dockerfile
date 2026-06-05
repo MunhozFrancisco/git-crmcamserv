@@ -1,10 +1,9 @@
 FROM node:20-slim
 
-RUN apk add --no-cache openssl
-
 WORKDIR /app
 
-RUN apt-get update && apt-get install -y openssl
+# Instala o openssl corretamente usando o apt-get nativo do debian/slim
+RUN apt-get update && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
 
 COPY package*.json ./
 
@@ -16,9 +15,6 @@ RUN npx prisma generate
 
 RUN npm run build
 
-EXPOSE 3001 
-
-CMD ["npm", "start"]
-
+EXPOSE 3001
 
 CMD ["npm", "start"]
