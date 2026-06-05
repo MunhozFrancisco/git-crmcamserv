@@ -2,4 +2,7 @@ node_modules
 .next
 .github
 .git
+.env
+.env.*
+!.env.example
 
