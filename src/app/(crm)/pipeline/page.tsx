@@ -97,6 +97,7 @@ function OportunidadeModal({
       expected_close_date: form.expected_close_date || new Date().toISOString().split('T')[0],
       last_interaction: initial?.last_interaction ?? new Date().toISOString().split('T')[0],
       created_at: initial?.created_at ?? new Date().toISOString().split('T')[0],
+      client_id: '',
       lead: { ...lead, contact_name: form.contact_name || lead.contact_name },
       assignee: assigneeUser,
     }

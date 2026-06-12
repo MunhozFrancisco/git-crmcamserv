@@ -1,0 +1,16 @@
+# Forçar LF em todos os arquivos de texto (Windows usa CRLF por padrão)
+# Garante que scripts e arquivos de configuração tenham LF ao chegar na VPS Linux
+* text=auto eol=lf
+
+# Binários — não alterar
+*.png   binary
+*.jpg   binary
+*.jpeg  binary
+*.ico   binary
+*.woff  binary
+*.woff2 binary
+*.ttf   binary
+*.eot   binary
+
+# Scripts shell — explicitamente LF
+*.sh    text eol=lf

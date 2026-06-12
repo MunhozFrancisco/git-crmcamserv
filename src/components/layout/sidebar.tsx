@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import {
   LayoutDashboard, Kanban, CheckSquare,
-  BarChart3, Sparkles, LogOut, Building2, Package, Briefcase,
+  BarChart3, Sparkles, LogOut, Building2, Package, Briefcase, Users,
 } from 'lucide-react'
 import { cn, getInitials } from '@/lib/utils'
 import { useUser } from '@/contexts/user-context'
@@ -14,6 +14,7 @@ const navItems = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/pipeline', label: 'Pipeline', icon: Kanban },
   { href: '/clientes', label: 'Clientes', icon: Briefcase },
+  { href: '/contatos', label: 'Contatos', icon: Users },
   { href: '/tarefas', label: 'Tarefas', icon: CheckSquare },
 ]
 

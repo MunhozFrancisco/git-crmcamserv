@@ -1,0 +1,24 @@
+version: '3.9'
+
+services:
+  app:
+    image: camserv-crm:latest
+    container_name: camserv-crm
+    restart: unless-stopped
+
+    # Usa a rede do host para acessar o PostgreSQL instalado na VPS (localhost:5432)
+    network_mode: host
+
+    env_file:
+      - .env
+
+    # Porta explícita (redundante com network_mode:host, mas serve de documentação)
+    # ports:
+    #   - "3000:3000"
+
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fs http://localhost:3000/api/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s

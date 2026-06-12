@@ -28,7 +28,6 @@ export async function POST(req: Request) {
       description: body.description ?? null,
       type: body.type,
       category: body.category,
-      price: body.price ?? 0,
       unit: body.unit ?? 'único',
       active: body.active ?? true,
     },

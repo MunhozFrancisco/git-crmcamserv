@@ -26,71 +26,100 @@ log "Atualizando sistema..."
 apt-get update -qq && apt-get upgrade -y -qq
 
 # ── 2. Dependências básicas ───────────────────────────────
-log "Instalando dependências..."
-apt-get install -y -qq curl git unzip ufw nginx
+log "Instalando dependências do sistema..."
+apt-get install -y -qq curl git unzip ufw nginx ca-certificates gnupg
 
-# ── 3. Node.js 20 (LTS) via NodeSource ───────────────────
-log "Instalando Node.js 20..."
-curl -fsSL https://deb.nodesource.com/setup_20.x | bash - > /dev/null 2>&1
-apt-get install -y -qq nodejs
-node --version
-npm --version
+# ── 3. Docker Engine ──────────────────────────────────────
+log "Instalando Docker..."
+install -m 0755 -d /etc/apt/keyrings
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+chmod a+r /etc/apt/keyrings/docker.gpg
+echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] \
+  https://download.docker.com/linux/ubuntu $(. /etc/os-release && echo "$VERSION_CODENAME") stable" \
+  > /etc/apt/sources.list.d/docker.list
+apt-get update -qq
+apt-get install -y -qq docker-ce docker-ce-cli containerd.io docker-compose-plugin
+systemctl enable --now docker
+log "Docker instalado: $(docker --version)"
 
-# ── 4. PM2 ───────────────────────────────────────────────
-log "Instalando PM2..."
-npm install -g pm2 --silent
-pm2 startup systemd -u root --hp /root | tail -1 | bash
-
-# ── 5. PostgreSQL 16 ──────────────────────────────────────
+# ── 4. PostgreSQL 16 ──────────────────────────────────────
 log "Instalando PostgreSQL 16..."
 apt-get install -y -qq postgresql postgresql-contrib
-
-# Iniciar e habilitar serviço
-systemctl start postgresql
-systemctl enable postgresql
+systemctl enable --now postgresql
 log "PostgreSQL rodando."
 
-# ── 6. Criar banco e role da aplicação ───────────────────
+# ── 5. Criar banco e role da aplicação ───────────────────
 warn "Configurando banco de dados..."
 read -rsp "  Senha para o role '${DB_USER}' (aplicação): " DB_PASS; echo ""
-read -rsp "  Senha do admin PostgreSQL (postgres): " PG_PASS; echo ""
 
-sudo -u postgres psql -c "ALTER USER postgres PASSWORD '${PG_PASS}';"
 sudo -u postgres psql <<SQL
-CREATE DATABASE ${DB_NAME} ENCODING 'UTF8' LC_COLLATE 'pt_BR.UTF-8' LC_CTYPE 'pt_BR.UTF-8' TEMPLATE template0;
-CREATE ROLE ${DB_USER} LOGIN PASSWORD '${DB_PASS}';
+DO \$\$
+BEGIN
+  IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = '${DB_USER}') THEN
+    CREATE ROLE ${DB_USER} LOGIN PASSWORD '${DB_PASS}';
+  ELSE
+    ALTER ROLE ${DB_USER} PASSWORD '${DB_PASS}';
+  END IF;
+END
+\$\$;
 SQL
 
-log "Banco '${DB_NAME}' criado."
+sudo -u postgres psql -tc "SELECT 1 FROM pg_database WHERE datname='${DB_NAME}'" | grep -q 1 || \
+  sudo -u postgres psql -c "CREATE DATABASE ${DB_NAME} ENCODING 'UTF8' OWNER ${DB_USER};"
 
-# ── 7. Aplicar schema SQL ─────────────────────────────────
-log "Aplicando schema do banco..."
-sudo -u postgres psql -d "${DB_NAME}" -f /tmp/schema.sql 2>/dev/null || \
-  warn "schema.sql não encontrado em /tmp — rode manualmente depois."
+sudo -u postgres psql -d "${DB_NAME}" -c "GRANT ALL PRIVILEGES ON DATABASE ${DB_NAME} TO ${DB_USER};"
+sudo -u postgres psql -d "${DB_NAME}" -c "GRANT ALL ON SCHEMA public TO ${DB_USER};"
 
-# ── 8. Diretório da aplicação ─────────────────────────────
-log "Criando diretório da aplicação..."
+log "Banco '${DB_NAME}' configurado."
+
+# ── 6. Diretório da aplicação ─────────────────────────────
+log "Criando diretório da aplicação em ${APP_DIR}..."
 mkdir -p "${APP_DIR}"
-chown -R root:root "${APP_DIR}"
 
-# ── 9. Arquivo de ambiente ────────────────────────────────
+# ── 7. Arquivo de ambiente ────────────────────────────────
 VPS_IP=$(curl -s ifconfig.me)
+NEXTAUTH_SECRET_VAL=$(openssl rand -base64 32)
 
 cat > "${APP_DIR}/.env" <<ENV
-# ── Banco de dados ──────────────────────────────────────
+# Banco de dados
 DATABASE_URL="postgresql://${DB_USER}:${DB_PASS}@localhost:5432/${DB_NAME}"
 
-# ── Autenticação (NextAuth) ──────────────────────────────
+# Autenticação (NextAuth)
 NEXTAUTH_URL="http://${VPS_IP}"
-NEXTAUTH_SECRET="$(openssl rand -base64 32)"
+NEXTAUTH_SECRET="${NEXTAUTH_SECRET_VAL}"
 
-# ── App ──────────────────────────────────────────────────
+# App
 NODE_ENV=production
 PORT=${APP_PORT}
 ENV
 
+chmod 600 "${APP_DIR}/.env"
 log ".env criado em ${APP_DIR}/.env"
-warn "NEXTAUTH_SECRET gerado automaticamente. Guarde-o em lugar seguro."
+warn "NEXTAUTH_SECRET: ${NEXTAUTH_SECRET_VAL}"
+warn "Guarde o NEXTAUTH_SECRET em lugar seguro!"
+
+# ── 8. Aplicar schema SQL ─────────────────────────────────
+if [ -f "${APP_DIR}/database/schema.sql" ]; then
+  log "Aplicando schema principal..."
+  sudo -u postgres psql -d "${DB_NAME}" -f "${APP_DIR}/database/schema.sql"
+else
+  warn "schema.sql não encontrado em ${APP_DIR}/database/schema.sql"
+  warn "Copie o projeto primeiro, depois execute:"
+  warn "  sudo -u postgres psql -d ${DB_NAME} -f ${APP_DIR}/database/schema.sql"
+fi
+
+# ── 9. Aplicar migrations ────────────────────────────────
+if [ -d "${APP_DIR}/database/migrations" ]; then
+  log "Aplicando migrations..."
+  for f in "${APP_DIR}/database/migrations/"*.sql; do
+    [ -f "$f" ] || continue
+    log "  Aplicando: $(basename $f)"
+    sudo -u postgres psql -d "${DB_NAME}" -f "$f" || warn "Migration $(basename $f) pode já ter sido aplicada."
+  done
+else
+  warn "Pasta de migrations não encontrada. Execute manualmente após copiar o projeto:"
+  warn "  sudo -u postgres psql -d ${DB_NAME} -f ${APP_DIR}/database/migrations/001_v01_updates.sql"
+fi
 
 # ── 10. Firewall (UFW) ────────────────────────────────────
 log "Configurando firewall..."
@@ -107,11 +136,9 @@ server {
     listen 80;
     server_name ${VPS_IP} _;
 
-    # Segurança básica
     add_header X-Frame-Options "SAMEORIGIN";
     add_header X-Content-Type-Options "nosniff";
 
-    # Proxy para o Next.js
     location / {
         proxy_pass         http://127.0.0.1:${APP_PORT};
         proxy_http_version 1.1;
@@ -121,11 +148,11 @@ server {
         proxy_set_header   X-Real-IP \$remote_addr;
         proxy_set_header   X-Forwarded-For \$proxy_add_x_forwarded_for;
         proxy_cache_bypass \$http_upgrade;
+        proxy_read_timeout 60s;
     }
 
-    # Arquivos estáticos Next.js
     location /_next/static/ {
-        alias ${APP_DIR}/.next/static/;
+        proxy_pass http://127.0.0.1:${APP_PORT};
         expires 1y;
         add_header Cache-Control "public, immutable";
     }
@@ -143,23 +170,30 @@ echo "=================================================="
 echo -e "  ${GREEN}VPS configurada com sucesso!${NC}"
 echo "=================================================="
 echo ""
-echo "  Próximos passos:"
+echo "  Próximos passos para fazer o deploy:"
 echo ""
 echo "  1. Copie o projeto para ${APP_DIR}:"
-echo "     git clone <repo> ${APP_DIR}"
-echo "     # ou: scp -r ./camserv-crm root@${VPS_IP}:${APP_DIR}"
+echo "     git clone <repo-url> ${APP_DIR}"
+echo "     # ou via scp:"
+echo "     # scp -r ./CRM-Camserv root@${VPS_IP}:${APP_DIR}"
 echo ""
-echo "  2. Na pasta ${APP_DIR}, execute:"
-echo "     npm install --legacy-peer-deps"
-echo "     npx prisma generate"
-echo "     psql -U camserv_app -d camserv_crm -h localhost -f database/schema.sql"
-echo "     # Para atualizar a senha do gestor padrão:"
-echo "     node -e \"const b=require('bcryptjs'); b.hash('SuaSenha@2025',10).then(h=>console.log(h))\""
-echo "     # Cole o hash gerado no UPDATE abaixo:"
-echo "     psql -U postgres -d camserv_crm -c \"UPDATE users SET password_hash='HASH_AQUI' WHERE email='rafael@camserv.com.br'\""
-echo "     npm run build"
-echo "     pm2 start npm --name camserv-crm -- start"
-echo "     pm2 save"
+echo "  2. Construa a imagem Docker:"
+echo "     cd ${APP_DIR}"
+echo "     docker build -t camserv-crm:latest ."
 echo ""
-echo "  3. Acesse: http://${VPS_IP}"
+echo "  3. Suba o container:"
+echo "     docker compose up -d"
+echo ""
+echo "  4. Verifique se está rodando:"
+echo "     docker compose ps"
+echo "     curl http://localhost:${APP_PORT}/api/health"
+echo ""
+echo "  5. Para atualizar a senha do gestor padrão:"
+echo "     node -e \"const b=require('bcryptjs');b.hash('SuaSenha@2025',10).then(h=>console.log(h))\""
+echo "     psql -U postgres -d ${DB_NAME} -c \"UPDATE users SET password_hash='HASH' WHERE email='...' \""
+echo ""
+echo "  6. Para ver logs do container:"
+echo "     docker compose logs -f"
+echo ""
+echo "  URL da aplicação: http://${VPS_IP}"
 echo ""

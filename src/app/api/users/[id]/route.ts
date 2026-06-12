@@ -29,7 +29,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   return NextResponse.json(user)
 }
 
-export async function DELETE(_req: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function DELETE(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const session = await getServerSession(authOptions)
   if (!session || session.user.role !== 'gestor') {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
@@ -39,6 +39,24 @@ export async function DELETE(_req: Request, { params }: { params: Promise<{ id: 
 
   if (id === session.user.id) {
     return NextResponse.json({ error: 'Não é possível excluir o próprio usuário' }, { status: 400 })
+  }
+
+  const body = await req.json().catch(() => ({}))
+  const transferToId: string | undefined = body.transfer_to_id
+
+  if (transferToId) {
+    await prisma.opportunity.updateMany({
+      where: { assignedTo: id },
+      data: { assignedTo: transferToId },
+    })
+    await prisma.task.updateMany({
+      where: { assignedTo: id },
+      data: { assignedTo: transferToId },
+    })
+    await prisma.client.updateMany({
+      where: { assignedTo: id },
+      data: { assignedTo: transferToId },
+    })
   }
 
   await prisma.user.update({ where: { id }, data: { active: false } })

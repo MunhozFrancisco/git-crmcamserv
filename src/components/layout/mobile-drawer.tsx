@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { BarChart3, Package, Sparkles, LogOut, Building2, Shield, User as UserIcon, Briefcase } from 'lucide-react'
+import { BarChart3, Package, Sparkles, LogOut, Building2, Shield, User as UserIcon, Briefcase, Users } from 'lucide-react'
 import { cn, getInitials } from '@/lib/utils'
 import { useUser } from '@/contexts/user-context'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
@@ -77,6 +77,17 @@ export function MobileDrawer({ children }: { children: ReactNode }) {
             >
               <Briefcase className="h-5 w-5 shrink-0" />
               Clientes
+            </Link>
+          </SheetClose>
+          <SheetClose asChild>
+            <Link
+              href="/contatos"
+              className={`flex items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium transition-colors ${
+                pathname === '/contatos' ? 'bg-indigo-600 text-white' : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+              }`}
+            >
+              <Users className="h-5 w-5 shrink-0" />
+              Contatos
             </Link>
           </SheetClose>
         </div>

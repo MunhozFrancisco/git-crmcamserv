@@ -42,6 +42,7 @@ export async function POST(req: Request) {
       score: body.score ?? 50,
       riskLevel: body.risk_level ?? 'medio',
       expectedCloseDate: body.expected_close_date ? new Date(body.expected_close_date) : null,
+      nextInteractionDate: body.next_interaction_date ? new Date(body.next_interaction_date) : null,
     },
     include: {
       client: { select: { id: true, name: true } },

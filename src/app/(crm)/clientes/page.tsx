@@ -23,7 +23,7 @@ import {
   Search, Plus, MoreVertical, Pencil, Trash2,
   Globe, MapPin, Hash, Briefcase, Users,
   Phone, Mail, MessageCircle, Star, ChevronLeft,
-  ArrowUpCircle, Loader2,
+  ArrowUpCircle, Loader2, LayoutGrid, List,
 } from 'lucide-react'
 
 /* ─── Tipos auxiliares ────────────────────────────────────── */
@@ -49,7 +49,9 @@ function formatCNPJ(v: string) {
 ══════════════════════════════════════════════ */
 type ClientForm = {
   status: 'lead' | 'cliente'
+  client_type: 'privado' | 'governo'
   name: string; razao_social: string; cnpj: string; site: string
+  phone: string; whatsapp: string
   segment: string; address: string; source: Client['source']
   temperature: Client['temperature']; responsible_name: string; assigned_to: string
 }
@@ -63,10 +65,13 @@ function ClienteModal({ open, onOpenChange, initial, currentUserId, isGestor, ve
   const isEdit = !!initial
   const [form, setForm] = useState<ClientForm>({
     status: initial?.status ?? 'lead',
+    client_type: initial?.client_type ?? 'privado',
     name: initial?.name ?? '',
     razao_social: initial?.razao_social ?? '',
     cnpj: initial?.cnpj ?? '',
     site: initial?.site ?? '',
+    phone: initial?.phone ?? '',
+    whatsapp: initial?.whatsapp ?? '',
     segment: initial?.segment ?? '',
     address: initial?.address ?? '',
     source: initial?.source ?? 'outro',
@@ -82,10 +87,13 @@ function ClienteModal({ open, onOpenChange, initial, currentUserId, isGestor, ve
     if (open) {
       setForm({
         status: initial?.status ?? 'lead',
+        client_type: initial?.client_type ?? 'privado',
         name: initial?.name ?? '',
         razao_social: initial?.razao_social ?? '',
         cnpj: initial?.cnpj ?? '',
         site: initial?.site ?? '',
+        phone: initial?.phone ?? '',
+        whatsapp: initial?.whatsapp ?? '',
         segment: initial?.segment ?? '',
         address: initial?.address ?? '',
         source: initial?.source ?? 'outro',
@@ -117,10 +125,13 @@ function ClienteModal({ open, onOpenChange, initial, currentUserId, isGestor, ve
       onSave({
         id: saved.id,
         status: saved.status,
+        client_type: saved.clientType ?? 'privado',
         name: saved.name,
         razao_social: saved.razaoSocial ?? '',
         cnpj: saved.cnpj ?? '',
         site: saved.site ?? '',
+        phone: saved.phone ?? '',
+        whatsapp: saved.whatsapp ?? '',
         segment: saved.segment ?? '',
         address: saved.address ?? '',
         source: saved.source,
@@ -183,9 +194,29 @@ function ClienteModal({ open, onOpenChange, initial, currentUserId, isGestor, ve
                 onChange={e => field('cnpj', formatCNPJ(e.target.value))} />
             </div>
             <div>
+              <Label className="mb-1.5 block">Tipo de Cliente</Label>
+              <select value={form.client_type} onChange={e => field('client_type', e.target.value)}
+                className="w-full text-sm border border-slate-200 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                <option value="privado">🏢 Privado</option>
+                <option value="governo">🏛 Governo</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
               <Label className="mb-1.5 block">Site</Label>
               <Input placeholder="www.empresa.com.br" value={form.site} onChange={e => field('site', e.target.value)} />
             </div>
+            <div>
+              <Label className="mb-1.5 block">Telefone</Label>
+              <Input type="tel" placeholder="(11) 3000-0000" value={form.phone} onChange={e => field('phone', e.target.value)} />
+            </div>
+          </div>
+
+          <div>
+            <Label className="mb-1.5 block">WhatsApp</Label>
+            <Input type="tel" placeholder="(11) 99999-0000" value={form.whatsapp} onChange={e => field('whatsapp', e.target.value)} />
           </div>
 
           <div className="grid grid-cols-2 gap-3">
@@ -571,6 +602,7 @@ export default function ClientesPage() {
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('todos')
   const [tempFilter, setTempFilter] = useState('')
+  const [view, setView] = useState<'card' | 'list'>('card')
   const [modalOpen, setModalOpen] = useState(false)
   const [editTarget, setEditTarget] = useState<Client | undefined>()
   const [deleteTarget, setDeleteTarget] = useState<Client | null>(null)
@@ -584,10 +616,13 @@ export default function ClientesPage() {
       setClients(data.map((c: Record<string, unknown>) => ({
         id: c.id,
         status: c.status,
+        client_type: c.clientType ?? 'privado',
         name: c.name,
         razao_social: c.razaoSocial ?? '',
         cnpj: c.cnpj ?? '',
         site: c.site ?? '',
+        phone: c.phone ?? '',
+        whatsapp: c.whatsapp ?? '',
         segment: c.segment ?? '',
         address: c.address ?? '',
         source: c.source,
@@ -733,10 +768,22 @@ export default function ClientesPage() {
           </div>
         </div>
 
-        <Button size="sm" className="gap-1.5" onClick={() => { setEditTarget(undefined); setModalOpen(true) }}>
-          <Plus className="h-3.5 w-3.5" />
-          Novo
-        </Button>
+        <div className="flex items-center gap-2">
+          <div className="flex rounded-lg border border-slate-200 overflow-hidden">
+            <button onClick={() => setView('card')} title="Cards"
+              className={cn('px-2.5 py-1.5 transition-colors', view === 'card' ? 'bg-indigo-600 text-white' : 'text-slate-500 hover:bg-slate-50')}>
+              <LayoutGrid className="h-3.5 w-3.5" />
+            </button>
+            <button onClick={() => setView('list')} title="Lista"
+              className={cn('px-2.5 py-1.5 transition-colors', view === 'list' ? 'bg-indigo-600 text-white' : 'text-slate-500 hover:bg-slate-50')}>
+              <List className="h-3.5 w-3.5" />
+            </button>
+          </div>
+          <Button size="sm" className="gap-1.5" onClick={() => { setEditTarget(undefined); setModalOpen(true) }}>
+            <Plus className="h-3.5 w-3.5" />
+            Novo
+          </Button>
+        </div>
       </div>
 
       {/* Grid */}
@@ -747,7 +794,7 @@ export default function ClientesPage() {
             <p className="text-slate-500 font-medium">Nenhum registro encontrado</p>
             <p className="text-sm text-slate-400 mt-1">Ajuste os filtros ou cadastre um novo cliente.</p>
           </div>
-        ) : (
+        ) : view === 'card' ? (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
             {filtered.map(client => {
               const sellerName = getUserName(client.assigned_to)
@@ -761,7 +808,6 @@ export default function ClientesPage() {
                   isLead ? 'hover:border-amber-200 border-amber-100/80' : 'hover:border-indigo-200'
                 )}>
                   <CardContent className="pt-4">
-                    {/* Header */}
                     <div className="flex items-start justify-between mb-3">
                       <div className="flex items-center gap-2.5 min-w-0">
                         <div className={cn(
@@ -775,11 +821,11 @@ export default function ClientesPage() {
                         <div className="min-w-0">
                           <p className="text-sm font-semibold text-slate-900 leading-tight truncate">{client.name}</p>
                           <div className="flex items-center gap-1.5 mt-0.5">
-                            <Badge
-                              variant={isLead ? 'warning' : 'success'}
-                              className="text-[10px] py-0"
-                            >
+                            <Badge variant={isLead ? 'warning' : 'success'} className="text-[10px] py-0">
                               {isLead ? '🎯 Lead' : '✅ Cliente'}
+                            </Badge>
+                            <Badge variant="outline" className="text-[10px] py-0">
+                              {client.client_type === 'governo' ? '🏛 Governo' : '🏢 Privado'}
                             </Badge>
                             {client.segment && (
                               <span className="text-xs text-slate-400 truncate">{client.segment}</span>
@@ -808,26 +854,27 @@ export default function ClientesPage() {
                             <Pencil className="h-4 w-4 text-slate-500" />
                             Editar
                           </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem className="text-red-600 hover:bg-red-50 focus:bg-red-50"
-                            onClick={() => setDeleteTarget(client)}>
-                            <Trash2 className="h-4 w-4" />
-                            Excluir
-                          </DropdownMenuItem>
+                          {isGestor && (
+                            <>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem className="text-red-600 hover:bg-red-50 focus:bg-red-50"
+                                onClick={() => setDeleteTarget(client)}>
+                                <Trash2 className="h-4 w-4" />
+                                Excluir
+                              </DropdownMenuItem>
+                            </>
+                          )}
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </div>
 
-                    {/* Info */}
                     <div className="space-y-1.5 mb-3">
-                      {/* Temperature + source */}
                       <div className="flex items-center gap-2">
                         <span className={cn('text-xs px-2 py-0.5 rounded-full border font-medium', temp.color)}>
                           {temp.icon} {temp.label}
                         </span>
                         <span className="text-xs text-slate-400 capitalize">{client.source}</span>
                       </div>
-
                       {client.cnpj && (
                         <div className="flex items-center gap-2 text-xs text-slate-600">
                           <Hash className="h-3 w-3 text-slate-400 shrink-0" />
@@ -840,6 +887,12 @@ export default function ClientesPage() {
                           <span className="truncate">
                             {primaryContact.name}{primaryContact.cargo ? ` · ${primaryContact.cargo}` : ''}
                           </span>
+                        </div>
+                      )}
+                      {client.phone && (
+                        <div className="flex items-center gap-2 text-xs text-slate-500">
+                          <Phone className="h-3 w-3 text-slate-400 shrink-0" />
+                          <span>{client.phone}</span>
                         </div>
                       )}
                       {client.site && (
@@ -856,7 +909,6 @@ export default function ClientesPage() {
                       )}
                     </div>
 
-                    {/* Footer */}
                     <div className="flex items-center justify-between pt-3 border-t border-slate-100">
                       <ContatosManager
                         client={client}
@@ -873,6 +925,102 @@ export default function ClientesPage() {
                 </Card>
               )
             })}
+          </div>
+        ) : (
+          /* List View */
+          <div className="rounded-xl border border-slate-200 overflow-hidden bg-white">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-slate-100 bg-slate-50">
+                  <th className="text-left px-4 py-2.5 text-xs font-semibold text-slate-500 uppercase tracking-wide">Nome</th>
+                  <th className="text-left px-4 py-2.5 text-xs font-semibold text-slate-500 uppercase tracking-wide hidden md:table-cell">Tipo</th>
+                  <th className="text-left px-4 py-2.5 text-xs font-semibold text-slate-500 uppercase tracking-wide hidden sm:table-cell">Temperatura</th>
+                  <th className="text-left px-4 py-2.5 text-xs font-semibold text-slate-500 uppercase tracking-wide hidden lg:table-cell">Contatos</th>
+                  <th className="text-left px-4 py-2.5 text-xs font-semibold text-slate-500 uppercase tracking-wide hidden lg:table-cell">Responsável</th>
+                  <th className="px-4 py-2.5 w-10"></th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map(client => {
+                  const sellerName = getUserName(client.assigned_to)
+                  const temp = temperatureConfig[client.temperature]
+                  const isLead = client.status === 'lead'
+                  return (
+                    <tr key={client.id} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-2.5">
+                          <div className={cn('h-8 w-8 rounded-lg flex items-center justify-center shrink-0',
+                            isLead ? 'bg-amber-100' : 'bg-indigo-100')}>
+                            <span className={cn('text-xs font-bold', isLead ? 'text-amber-700' : 'text-indigo-700')}>
+                              {getInitials(client.name)}
+                            </span>
+                          </div>
+                          <div>
+                            <p className="font-medium text-slate-900">{client.name}</p>
+                            <div className="flex items-center gap-1 mt-0.5">
+                              <Badge variant={isLead ? 'warning' : 'success'} className="text-[10px] py-0">
+                                {isLead ? '🎯 Lead' : '✅ Cliente'}
+                              </Badge>
+                              {client.cnpj && <span className="text-xs text-slate-400 font-mono">{client.cnpj}</span>}
+                            </div>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 hidden md:table-cell">
+                        <span className="text-xs text-slate-600">
+                          {client.client_type === 'governo' ? '🏛 Governo' : '🏢 Privado'}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 hidden sm:table-cell">
+                        <span className={cn('text-xs px-2 py-0.5 rounded-full border font-medium', temp.color)}>
+                          {temp.icon} {temp.label}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 hidden lg:table-cell">
+                        <ContatosManager
+                          client={client}
+                          onUpdate={updated => setClients(prev => prev.map(c => c.id === updated.id ? updated : c))}
+                        />
+                      </td>
+                      <td className="px-4 py-3 hidden lg:table-cell">
+                        <span className="text-xs text-slate-500">{sellerName.split(' ')[0]}</span>
+                      </td>
+                      <td className="px-4 py-3">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <button className="p-1.5 rounded-lg hover:bg-slate-200 transition-colors">
+                              <MoreVertical className="h-4 w-4 text-slate-400" />
+                            </button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            {isLead && (
+                              <>
+                                <DropdownMenuItem onClick={() => convertToCliente(client)}>
+                                  <ArrowUpCircle className="h-4 w-4 text-green-600" />Converter para Cliente
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                              </>
+                            )}
+                            <DropdownMenuItem onClick={() => { setEditTarget(client); setModalOpen(true) }}>
+                              <Pencil className="h-4 w-4 text-slate-500" />Editar
+                            </DropdownMenuItem>
+                            {isGestor && (
+                              <>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem className="text-red-600 hover:bg-red-50 focus:bg-red-50"
+                                  onClick={() => setDeleteTarget(client)}>
+                                  <Trash2 className="h-4 w-4" />Excluir
+                                </DropdownMenuItem>
+                              </>
+                            )}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
           </div>
         )}
       </div>

@@ -39,49 +39,49 @@ export const LEADS: Lead[] = [
 
 export const OPPORTUNITIES: Opportunity[] = [
   {
-    id: 'o1', lead_id: 'l1', stage_id: 's4', value: 48000, status: 'aberta',
+    id: 'o1', lead_id: 'l1', client_id: '', stage_id: 's4', value: 48000, status: 'aberta',
     assigned_to: 'u1', score: 87, risk_level: 'baixo',
     expected_close_date: '2025-05-30', last_interaction: '2025-05-16',
     created_at: '2025-04-10', lead: LEADS[0], assignee: USERS[1],
   },
   {
-    id: 'o2', lead_id: 'l2', stage_id: 's3', value: 15000, status: 'aberta',
+    id: 'o2', lead_id: 'l2', client_id: '', stage_id: 's3', value: 15000, status: 'aberta',
     assigned_to: 'u2', score: 54, risk_level: 'medio',
     expected_close_date: '2025-06-15', last_interaction: '2025-05-10',
     created_at: '2025-04-15', lead: LEADS[1], assignee: USERS[2],
   },
   {
-    id: 'o3', lead_id: 'l3', stage_id: 's1', value: 8000, status: 'aberta',
+    id: 'o3', lead_id: 'l3', client_id: '', stage_id: 's1', value: 8000, status: 'aberta',
     assigned_to: 'u3', score: 22, risk_level: 'alto',
     expected_close_date: '2025-07-01', last_interaction: '2025-05-05',
     created_at: '2025-04-20', lead: LEADS[2], assignee: USERS[3],
   },
   {
-    id: 'o4', lead_id: 'l4', stage_id: 's3', value: 32000, status: 'aberta',
+    id: 'o4', lead_id: 'l4', client_id: '', stage_id: 's3', value: 32000, status: 'aberta',
     assigned_to: 'u1', score: 75, risk_level: 'baixo',
     expected_close_date: '2025-06-05', last_interaction: '2025-05-17',
     created_at: '2025-05-01', lead: LEADS[3], assignee: USERS[1],
   },
   {
-    id: 'o5', lead_id: 'l5', stage_id: 's2', value: 12000, status: 'aberta',
+    id: 'o5', lead_id: 'l5', client_id: '', stage_id: 's2', value: 12000, status: 'aberta',
     assigned_to: 'u4', score: 41, risk_level: 'medio',
     expected_close_date: '2025-06-20', last_interaction: '2025-05-12',
     created_at: '2025-05-03', lead: LEADS[4], assignee: USERS[4],
   },
   {
-    id: 'o6', lead_id: 'l6', stage_id: 's1', value: 6500, status: 'aberta',
+    id: 'o6', lead_id: 'l6', client_id: '', stage_id: 's1', value: 6500, status: 'aberta',
     assigned_to: 'u5', score: 18, risk_level: 'alto',
     expected_close_date: '2025-07-10', last_interaction: '2025-05-06',
     created_at: '2025-05-05', lead: LEADS[5], assignee: USERS[5],
   },
   {
-    id: 'o7', lead_id: 'l7', stage_id: 's3', value: 21000, status: 'aberta',
+    id: 'o7', lead_id: 'l7', client_id: '', stage_id: 's3', value: 21000, status: 'aberta',
     assigned_to: 'u2', score: 63, risk_level: 'medio',
     expected_close_date: '2025-06-10', last_interaction: '2025-05-14',
     created_at: '2025-05-08', lead: LEADS[6], assignee: USERS[2],
   },
   {
-    id: 'o8', lead_id: 'l8', stage_id: 's4', value: 27000, status: 'aberta',
+    id: 'o8', lead_id: 'l8', client_id: '', stage_id: 's4', value: 27000, status: 'aberta',
     assigned_to: 'u3', score: 79, risk_level: 'baixo',
     expected_close_date: '2025-05-28', last_interaction: '2025-05-17',
     created_at: '2025-05-10', lead: LEADS[7], assignee: USERS[3],
@@ -108,10 +108,10 @@ export const TASKS: Task[] = [
 ]
 
 export const ALERTS: Alert[] = [
-  { id: 'al1', opportunity_id: 'o3', message: 'Delta Construtora está há 13 dias sem interação — risco de perda.', type: 'danger', created_at: '2025-05-18', opportunity: OPPORTUNITIES[2] },
-  { id: 'al2', opportunity_id: 'o6', message: 'Transprime Log está há 12 dias sem atualização.', type: 'danger', created_at: '2025-05-18', opportunity: OPPORTUNITIES[5] },
-  { id: 'al3', opportunity_id: 'o2', message: 'Loja Primus está há 8 dias sem interação — monitore.', type: 'warning', created_at: '2025-05-18', opportunity: OPPORTUNITIES[1] },
-  { id: 'al4', opportunity_id: 'o1', message: 'Grupo Horizonte: proposta enviada — ideal fechar em 48h.', type: 'info', created_at: '2025-05-18', opportunity: OPPORTUNITIES[0] },
+  { id: 'al1', opportunity_id: 'o3', message: 'Delta Construtora está há 13 dias sem interação — risco de perda.', type: 'danger', resolved: false, created_at: '2025-05-18', opportunity: OPPORTUNITIES[2] },
+  { id: 'al2', opportunity_id: 'o6', message: 'Transprime Log está há 12 dias sem atualização.', type: 'danger', resolved: false, created_at: '2025-05-18', opportunity: OPPORTUNITIES[5] },
+  { id: 'al3', opportunity_id: 'o2', message: 'Loja Primus está há 8 dias sem interação — monitore.', type: 'warning', resolved: false, created_at: '2025-05-18', opportunity: OPPORTUNITIES[1] },
+  { id: 'al4', opportunity_id: 'o1', message: 'Grupo Horizonte: proposta enviada — ideal fechar em 48h.', type: 'info', resolved: false, created_at: '2025-05-18', opportunity: OPPORTUNITIES[0] },
 ]
 
 export const SELLER_STATS: SellerStats[] = [
@@ -123,14 +123,14 @@ export const SELLER_STATS: SellerStats[] = [
 ]
 
 export const PRODUCTS: Product[] = [
-  { id: 'p1', name: 'CRM Pro', description: 'Licença mensal do sistema CRM com todos os módulos', type: 'serviço', category: 'Software', price: 299, unit: '/mês/usuário', active: true, created_at: '2025-01-10' },
-  { id: 'p2', name: 'Implantação e Configuração', description: 'Serviço de implantação, migração de dados e configuração inicial do sistema', type: 'serviço', category: 'Consultoria', price: 4500, unit: 'único', active: true, created_at: '2025-01-10' },
-  { id: 'p3', name: 'Treinamento Equipe', description: 'Treinamento presencial ou online para a equipe comercial (até 10 pessoas)', type: 'serviço', category: 'Treinamento', price: 1800, unit: '/turma', active: true, created_at: '2025-01-15' },
-  { id: 'p4', name: 'Suporte Prioritário', description: 'Suporte técnico com SLA de 4 horas e atendimento via WhatsApp', type: 'serviço', category: 'Suporte', price: 590, unit: '/mês', active: true, created_at: '2025-02-01' },
-  { id: 'p5', name: 'Integração WhatsApp Business', description: 'Integração do CRM com WhatsApp Business API para automação de mensagens', type: 'serviço', category: 'Software', price: 350, unit: '/mês', active: true, created_at: '2025-02-15' },
-  { id: 'p6', name: 'Módulo IA Gestor Comercial', description: 'Agente de IA que analisa oportunidades, gera score e recomenda ações', type: 'serviço', category: 'Software', price: 890, unit: '/mês', active: true, created_at: '2025-03-01' },
-  { id: 'p7', name: 'Consultoria Comercial Mensal', description: 'Reunião mensal com especialista para análise de pipeline e estratégia de vendas', type: 'serviço', category: 'Consultoria', price: 2200, unit: '/mês', active: false, created_at: '2025-03-10' },
-  { id: 'p8', name: 'Backup e Segurança de Dados', description: 'Backup diário automático com criptografia e armazenamento em nuvem', type: 'serviço', category: 'Infraestrutura', price: 190, unit: '/mês', active: true, created_at: '2025-04-01' },
+  { id: 'p1', name: 'CRM Pro', description: 'Licença mensal do sistema CRM com todos os módulos', type: 'serviço', category: 'Software', unit: '/mês/usuário', active: true, created_at: '2025-01-10' },
+  { id: 'p2', name: 'Implantação e Configuração', description: 'Serviço de implantação, migração de dados e configuração inicial do sistema', type: 'serviço', category: 'Consultoria', unit: 'único', active: true, created_at: '2025-01-10' },
+  { id: 'p3', name: 'Treinamento Equipe', description: 'Treinamento presencial ou online para a equipe comercial (até 10 pessoas)', type: 'serviço', category: 'Treinamento', unit: '/turma', active: true, created_at: '2025-01-15' },
+  { id: 'p4', name: 'Suporte Prioritário', description: 'Suporte técnico com SLA de 4 horas e atendimento via WhatsApp', type: 'serviço', category: 'Suporte', unit: '/mês', active: true, created_at: '2025-02-01' },
+  { id: 'p5', name: 'Integração WhatsApp Business', description: 'Integração do CRM com WhatsApp Business API para automação de mensagens', type: 'serviço', category: 'Software', unit: '/mês', active: true, created_at: '2025-02-15' },
+  { id: 'p6', name: 'Módulo IA Gestor Comercial', description: 'Agente de IA que analisa oportunidades, gera score e recomenda ações', type: 'serviço', category: 'Software', unit: '/mês', active: true, created_at: '2025-03-01' },
+  { id: 'p7', name: 'Consultoria Comercial Mensal', description: 'Reunião mensal com especialista para análise de pipeline e estratégia de vendas', type: 'serviço', category: 'Consultoria', unit: '/mês', active: false, created_at: '2025-03-10' },
+  { id: 'p8', name: 'Backup e Segurança de Dados', description: 'Backup diário automático com criptografia e armazenamento em nuvem', type: 'serviço', category: 'Infraestrutura', unit: '/mês', active: true, created_at: '2025-04-01' },
 ]
 
 export const CLIENTS: Client[] = [
@@ -138,7 +138,7 @@ export const CLIENTS: Client[] = [
   {
     id: 'c1', status: 'cliente', name: 'Grupo Horizonte', razao_social: 'Grupo Horizonte Tecnologia Ltda',
     cnpj: '12.345.678/0001-90', site: 'www.grupohorizonte.com.br', segment: 'Tecnologia',
-    source: 'indicação', temperature: 'quente',
+    source: 'indicação', temperature: 'quente', client_type: 'privado', phone: '', whatsapp: '',
     address: 'Av. Paulista, 1000 — Sala 501, Bela Vista, São Paulo/SP, CEP 01310-100',
     responsible_name: 'Marcos Silva', assigned_to: 'u1', created_at: '2025-04-20',
     contacts: [
@@ -149,7 +149,7 @@ export const CLIENTS: Client[] = [
   {
     id: 'c2', status: 'cliente', name: 'Clínica Saúde+', razao_social: 'Clínica Saúde Mais Serviços Médicos S/S Ltda',
     cnpj: '23.456.789/0001-01', site: 'www.clinicasaudemais.com.br', segment: 'Saúde',
-    source: 'indicação', temperature: 'quente',
+    source: 'indicação', temperature: 'quente', client_type: 'privado', phone: '', whatsapp: '',
     address: 'Rua das Flores, 200 — Centro, Campinas/SP, CEP 13010-050',
     responsible_name: 'Dra. Paula Mota', assigned_to: 'u1', created_at: '2025-05-10',
     contacts: [
@@ -161,7 +161,7 @@ export const CLIENTS: Client[] = [
   {
     id: 'c3', status: 'cliente', name: 'Indústria Forja', razao_social: 'Forja Metais Indústria e Comércio SA',
     cnpj: '34.567.890/0001-12', site: 'www.forjametais.com.br', segment: 'Indústria',
-    source: 'linkedin', temperature: 'morno',
+    source: 'linkedin', temperature: 'morno', client_type: 'privado', phone: '', whatsapp: '',
     address: 'Rod. Anhanguera, km 88 — Distrito Industrial, Sumaré/SP, CEP 13175-000',
     responsible_name: 'Eng. Renato Barbosa', assigned_to: 'u2', created_at: '2025-04-15',
     contacts: [
@@ -171,7 +171,7 @@ export const CLIENTS: Client[] = [
   {
     id: 'c4', status: 'cliente', name: 'Escola Futuro', razao_social: 'Centro Educacional Futuro Eireli',
     cnpj: '45.678.901/0001-23', site: 'www.escolafuturo.edu.br', segment: 'Educação',
-    source: 'evento', temperature: 'morno',
+    source: 'evento', temperature: 'morno', client_type: 'privado', phone: '', whatsapp: '',
     address: 'Rua Esperança, 450 — Jardim América, Ribeirão Preto/SP, CEP 14020-260',
     responsible_name: 'Dir. João Pires', assigned_to: 'u4', created_at: '2025-05-02',
     contacts: [
@@ -182,7 +182,7 @@ export const CLIENTS: Client[] = [
   {
     id: 'c5', status: 'cliente', name: 'Rede Alimenta', razao_social: 'Rede Alimenta Franqueadora Ltda',
     cnpj: '56.789.012/0001-34', site: 'www.realimenta.com.br', segment: 'Alimentação',
-    source: 'site', temperature: 'quente',
+    source: 'site', temperature: 'quente', client_type: 'privado', phone: '', whatsapp: '',
     address: 'Av. Brasil, 3000 — Barra da Tijuca, Rio de Janeiro/RJ, CEP 22640-102',
     responsible_name: 'Sônia Braga', assigned_to: 'u3', created_at: '2025-05-12',
     contacts: [
@@ -195,7 +195,7 @@ export const CLIENTS: Client[] = [
   {
     id: 'cl1', status: 'lead', name: 'Loja Primus', razao_social: 'Loja Primus Comércio Ltda',
     cnpj: '', site: '', segment: 'Varejo',
-    source: 'site', temperature: 'morno', address: '',
+    source: 'site', temperature: 'morno', client_type: 'privado', phone: '', whatsapp: '', address: '',
     responsible_name: 'Fernanda Lima', assigned_to: 'u2', created_at: '2025-04-15',
     contacts: [
       { id: 'ct12', client_id: 'cl1', name: 'Fernanda Lima', cargo: 'Gerente Comercial', department: 'Comercial', email: 'fernanda@primus.com', phone: '(11) 99999-2222', whatsapp: '(11) 99999-2222', is_primary: true },
@@ -204,7 +204,7 @@ export const CLIENTS: Client[] = [
   {
     id: 'cl2', status: 'lead', name: 'Delta Construtora', razao_social: 'Delta Construtora e Incorporadora SA',
     cnpj: '', site: '', segment: 'Construção',
-    source: 'linkedin', temperature: 'frio', address: '',
+    source: 'linkedin', temperature: 'frio', client_type: 'privado', phone: '', whatsapp: '', address: '',
     responsible_name: 'Roberto Neves', assigned_to: 'u3', created_at: '2025-04-20',
     contacts: [
       { id: 'ct13', client_id: 'cl2', name: 'Roberto Neves', cargo: 'Diretor de Obras', department: 'Engenharia', email: 'roberto@delta.com', phone: '(11) 99999-3333', whatsapp: '', is_primary: true },
@@ -213,7 +213,7 @@ export const CLIENTS: Client[] = [
   {
     id: 'cl3', status: 'lead', name: 'Transprime Log', razao_social: 'Transprime Logística e Transporte Ltda',
     cnpj: '', site: '', segment: 'Logística',
-    source: 'cold-call', temperature: 'frio', address: '',
+    source: 'cold-call', temperature: 'frio', client_type: 'privado', phone: '', whatsapp: '', address: '',
     responsible_name: 'Célia Ramos', assigned_to: 'u5', created_at: '2025-05-05',
     contacts: [
       { id: 'ct14', client_id: 'cl3', name: 'Célia Ramos', cargo: 'Gerente Operacional', department: 'Operações', email: 'celia@transprime.com', phone: '(11) 99999-6666', whatsapp: '', is_primary: true },

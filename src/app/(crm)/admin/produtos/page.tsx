@@ -17,11 +17,11 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import type { Product, ProductCategory, ProductType } from '@/types'
-import { formatCurrency } from '@/lib/utils'
 import {
   Plus, Package, Wrench, ToggleLeft, ToggleRight,
-  Search, MoreVertical, Pencil, Trash2, Loader2,
+  Search, MoreVertical, Pencil, Trash2, Loader2, LayoutGrid, List,
 } from 'lucide-react'
+import { cn } from '@/lib/utils'
 
 const CATEGORIES: ProductCategory[] = [
   'Software', 'Hardware', 'Consultoria', 'Suporte', 'Treinamento', 'Infraestrutura', 'Outro'
@@ -32,12 +32,11 @@ type FormState = {
   description: string
   type: ProductType
   category: ProductCategory
-  price: string
   unit: string
 }
 
 const EMPTY_FORM: FormState = {
-  name: '', description: '', type: 'serviço', category: 'Software', price: '', unit: '/mês',
+  name: '', description: '', type: 'serviço', category: 'Software', unit: '/mês',
 }
 
 /* ─── Normalizar produto do banco → frontend ─────────────── */
@@ -48,7 +47,6 @@ function normalizeProduct(p: Record<string, unknown>): Product {
     description: (p.description ?? '') as string,
     type: p.type as ProductType,
     category: p.category as ProductCategory,
-    price: Number(p.price ?? 0),
     unit: (p.unit ?? 'único') as string,
     active: (p.active ?? true) as boolean,
     created_at: p.createdAt
@@ -68,14 +66,7 @@ function ProdutoModal({
   const isEdit = !!initial
   const [form, setForm] = useState<FormState>(
     initial
-      ? {
-          name: initial.name,
-          description: initial.description,
-          type: initial.type,
-          category: initial.category,
-          price: String(initial.price),
-          unit: initial.unit,
-        }
+      ? { name: initial.name, description: initial.description, type: initial.type, category: initial.category, unit: initial.unit }
       : EMPTY_FORM
   )
   const [saving, setSaving] = useState(false)
@@ -85,14 +76,7 @@ function ProdutoModal({
     if (open) {
       setForm(
         initial
-          ? {
-              name: initial.name,
-              description: initial.description,
-              type: initial.type,
-              category: initial.category,
-              price: String(initial.price),
-              unit: initial.unit,
-            }
+          ? { name: initial.name, description: initial.description, type: initial.type, category: initial.category, unit: initial.unit }
           : EMPTY_FORM
       )
       setError('')
@@ -104,7 +88,7 @@ function ProdutoModal({
   }
 
   async function handleSave() {
-    if (!form.name || !form.price) return
+    if (!form.name) return
     setSaving(true)
     setError('')
     try {
@@ -113,7 +97,6 @@ function ProdutoModal({
         description: form.description,
         type: form.type,
         category: form.category,
-        price: parseFloat(form.price),
         unit: form.unit,
         active: initial?.active ?? true,
       }
@@ -193,26 +176,14 @@ function ProdutoModal({
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <Label className="mb-1.5 block">Preço (R$) *</Label>
-              <Input
-                type="number"
-                min="0"
-                step="0.01"
-                placeholder="0,00"
-                value={form.price}
-                onChange={(e) => field('price', e.target.value)}
-              />
-            </div>
-            <div>
-              <Label className="mb-1.5 block">Unidade</Label>
-              <Input
-                placeholder="Ex: /mês, único, /hora"
-                value={form.unit}
-                onChange={(e) => field('unit', e.target.value)}
-              />
-            </div>
+          <div>
+            <Label className="mb-1.5 block">Unidade</Label>
+            <Input
+              placeholder="Ex: /mês, único, /hora"
+              value={form.unit}
+              onChange={(e) => field('unit', e.target.value)}
+            />
+            <p className="text-xs text-slate-400 mt-1">O preço será definido no momento da criação da oportunidade.</p>
           </div>
 
           {error && <p className="text-sm text-red-600">{error}</p>}
@@ -220,7 +191,7 @@ function ProdutoModal({
 
         <DialogFooter className="gap-2 mt-2">
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>Cancelar</Button>
-          <Button onClick={handleSave} disabled={!form.name || !form.price || saving}>
+          <Button onClick={handleSave} disabled={!form.name || saving}>
             {saving && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
             {isEdit ? 'Salvar Alterações' : 'Cadastrar'}
           </Button>
@@ -233,6 +204,7 @@ function ProdutoModal({
 export default function ProdutosPage() {
   const [products, setProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
+  const [view, setView] = useState<'card' | 'list'>('card')
   const [search, setSearch] = useState('')
   const [filterType, setFilterType] = useState<string>('')
   const [filterCategory, setFilterCategory] = useState<string>('')
@@ -367,62 +339,63 @@ export default function ProdutosPage() {
           </select>
         </div>
 
-        <Button size="sm" className="gap-1.5" onClick={openNew}>
-          <Plus className="h-3.5 w-3.5" />
-          Novo Produto / Serviço
-        </Button>
+        <div className="flex items-center gap-2">
+          <div className="flex rounded-lg border border-slate-200 overflow-hidden">
+            <button onClick={() => setView('card')} title="Cards"
+              className={cn('px-2.5 py-1.5 transition-colors', view === 'card' ? 'bg-indigo-600 text-white' : 'text-slate-500 hover:bg-slate-50')}>
+              <LayoutGrid className="h-3.5 w-3.5" />
+            </button>
+            <button onClick={() => setView('list')} title="Lista"
+              className={cn('px-2.5 py-1.5 transition-colors', view === 'list' ? 'bg-indigo-600 text-white' : 'text-slate-500 hover:bg-slate-50')}>
+              <List className="h-3.5 w-3.5" />
+            </button>
+          </div>
+          <Button size="sm" className="gap-1.5" onClick={openNew}>
+            <Plus className="h-3.5 w-3.5" />
+            Novo Produto / Serviço
+          </Button>
+        </div>
       </div>
 
       <div className="flex-1 overflow-y-auto p-4 lg:p-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-          {filtered.map((product) => (
-            <Card
-              key={product.id}
-              className={`transition-all hover:shadow-md ${!product.active ? 'opacity-60' : 'hover:border-indigo-200'}`}
-            >
-              <CardContent className="pt-4">
-                <div className="flex items-start justify-between mb-3">
-                  <div className="flex items-center gap-2.5">
-                    <div className={`h-9 w-9 rounded-lg flex items-center justify-center shrink-0 ${product.type === 'serviço' ? 'bg-indigo-100' : 'bg-slate-100'
-                      }`}>
-                      {product.type === 'serviço'
-                        ? <Wrench className="h-4 w-4 text-indigo-600" />
-                        : <Package className="h-4 w-4 text-slate-600" />
-                      }
+        {filtered.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-16 text-center">
+            <Package className="h-10 w-10 text-slate-300 mb-3" />
+            <p className="text-slate-500 font-medium">Nenhum produto encontrado</p>
+            <p className="text-sm text-slate-400 mt-1">Ajuste os filtros ou adicione um novo produto</p>
+          </div>
+        ) : view === 'card' ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+            {filtered.map(product => (
+              <Card key={product.id}
+                className={cn('transition-all hover:shadow-md', !product.active ? 'opacity-60' : 'hover:border-indigo-200')}>
+                <CardContent className="pt-4">
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="flex items-center gap-2.5">
+                      <div className={cn('h-9 w-9 rounded-lg flex items-center justify-center shrink-0',
+                        product.type === 'serviço' ? 'bg-indigo-100' : 'bg-slate-100')}>
+                        {product.type === 'serviço'
+                          ? <Wrench className="h-4 w-4 text-indigo-600" />
+                          : <Package className="h-4 w-4 text-slate-600" />}
+                      </div>
+                      <div>
+                        <p className="text-sm font-semibold text-slate-900 leading-tight">{product.name}</p>
+                        <p className="text-xs text-slate-500 capitalize">{product.type}</p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-sm font-semibold text-slate-900 leading-tight">{product.name}</p>
-                      <p className="text-xs text-slate-500 capitalize">{product.type}</p>
-                    </div>
+                    <Badge variant={product.active ? 'success' : 'secondary'}>
+                      {product.active ? 'Ativo' : 'Inativo'}
+                    </Badge>
                   </div>
-                  <Badge variant={product.active ? 'success' : 'secondary'}>
-                    {product.active ? 'Ativo' : 'Inativo'}
-                  </Badge>
-                </div>
-
-                <p className="text-xs text-slate-500 mb-3 leading-relaxed line-clamp-2">
-                  {product.description}
-                </p>
-
-                <div className="flex items-center gap-2 mb-4">
-                  <Badge variant="secondary" className="text-xs">{product.category}</Badge>
-                </div>
-
-                <div className="flex items-center justify-between pt-3 border-t border-slate-100">
-                  <div>
-                    <p className="text-base font-bold text-slate-900">{formatCurrency(product.price)}</p>
-                    <p className="text-xs text-slate-400">{product.unit}</p>
+                  <p className="text-xs text-slate-500 mb-3 leading-relaxed line-clamp-2">{product.description}</p>
+                  <div className="flex items-center gap-2 mb-4">
+                    <Badge variant="secondary" className="text-xs">{product.category}</Badge>
+                    <span className="text-xs text-slate-400">{product.unit}</span>
                   </div>
-                  <div className="flex items-center gap-1">
-                    <button
-                      title={product.active ? 'Desativar' : 'Ativar'}
-                      onClick={() => toggleActive(product)}
-                      className="p-1.5 rounded-lg hover:bg-slate-100 transition-colors text-slate-400 hover:text-slate-700"
-                    >
-                      {product.active
-                        ? <ToggleRight className="h-5 w-5 text-green-500" />
-                        : <ToggleLeft className="h-5 w-5" />
-                      }
+                  <div className="flex items-center justify-end pt-3 border-t border-slate-100 gap-1">
+                    <button title={product.active ? 'Desativar' : 'Ativar'} onClick={() => toggleActive(product)}
+                      className="p-1.5 rounded-lg hover:bg-slate-100 transition-colors text-slate-400 hover:text-slate-700">
+                      {product.active ? <ToggleRight className="h-5 w-5 text-green-500" /> : <ToggleLeft className="h-5 w-5" />}
                     </button>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
@@ -432,33 +405,89 @@ export default function ProdutosPage() {
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         <DropdownMenuItem onClick={() => openEdit(product)}>
-                          <Pencil className="h-4 w-4 text-slate-500" />
-                          Editar
+                          <Pencil className="h-4 w-4 text-slate-500" /> Editar
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
-                        <DropdownMenuItem
-                          className="text-red-600 hover:bg-red-50 focus:bg-red-50"
-                          onClick={() => setDeleteTarget(product)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                          Excluir
+                        <DropdownMenuItem className="text-red-600 hover:bg-red-50 focus:bg-red-50"
+                          onClick={() => setDeleteTarget(product)}>
+                          <Trash2 className="h-4 w-4" /> Excluir
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-
-          {filtered.length === 0 && (
-            <div className="col-span-3 flex flex-col items-center justify-center py-16 text-center">
-              <Package className="h-10 w-10 text-slate-300 mb-3" />
-              <p className="text-slate-500 font-medium">Nenhum produto encontrado</p>
-              <p className="text-sm text-slate-400 mt-1">Ajuste os filtros ou adicione um novo produto</p>
-            </div>
-          )}
-        </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        ) : (
+          <div className="rounded-xl border border-slate-200 overflow-hidden bg-white">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-slate-100 bg-slate-50">
+                  <th className="text-left px-4 py-2.5 text-xs font-semibold text-slate-500 uppercase tracking-wide">Nome</th>
+                  <th className="text-left px-4 py-2.5 text-xs font-semibold text-slate-500 uppercase tracking-wide hidden sm:table-cell">Categoria</th>
+                  <th className="text-left px-4 py-2.5 text-xs font-semibold text-slate-500 uppercase tracking-wide hidden md:table-cell">Unidade</th>
+                  <th className="text-left px-4 py-2.5 text-xs font-semibold text-slate-500 uppercase tracking-wide">Status</th>
+                  <th className="px-4 py-2.5 w-24 text-right text-xs font-semibold text-slate-500 uppercase tracking-wide">Ações</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map(product => (
+                  <tr key={product.id} className={cn('border-b border-slate-100 hover:bg-slate-50 transition-colors', !product.active && 'opacity-60')}>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-2.5">
+                        <div className={cn('h-8 w-8 rounded-lg flex items-center justify-center shrink-0',
+                          product.type === 'serviço' ? 'bg-indigo-100' : 'bg-slate-100')}>
+                          {product.type === 'serviço'
+                            ? <Wrench className="h-3.5 w-3.5 text-indigo-600" />
+                            : <Package className="h-3.5 w-3.5 text-slate-600" />}
+                        </div>
+                        <div>
+                          <p className="font-medium text-slate-900">{product.name}</p>
+                          <p className="text-xs text-slate-400 capitalize">{product.type}</p>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 hidden sm:table-cell">
+                      <Badge variant="secondary" className="text-xs">{product.category}</Badge>
+                    </td>
+                    <td className="px-4 py-3 hidden md:table-cell text-xs text-slate-500">{product.unit}</td>
+                    <td className="px-4 py-3">
+                      <Badge variant={product.active ? 'success' : 'secondary'}>
+                        {product.active ? 'Ativo' : 'Inativo'}
+                      </Badge>
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      <div className="flex items-center justify-end gap-1">
+                        <button title={product.active ? 'Desativar' : 'Ativar'} onClick={() => toggleActive(product)}
+                          className="p-1.5 rounded-lg hover:bg-slate-100 transition-colors text-slate-400 hover:text-slate-700">
+                          {product.active ? <ToggleRight className="h-4 w-4 text-green-500" /> : <ToggleLeft className="h-4 w-4" />}
+                        </button>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <button className="p-1.5 rounded-lg hover:bg-slate-200 transition-colors">
+                              <MoreVertical className="h-4 w-4 text-slate-400" />
+                            </button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => openEdit(product)}>
+                              <Pencil className="h-4 w-4 text-slate-500" /> Editar
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem className="text-red-600 hover:bg-red-50 focus:bg-red-50"
+                              onClick={() => setDeleteTarget(product)}>
+                              <Trash2 className="h-4 w-4" /> Excluir
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
       <ProdutoModal

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Header } from '@/components/layout/header'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -16,12 +16,11 @@ import {
   DropdownMenu, DropdownMenuTrigger, DropdownMenuContent,
   DropdownMenuItem, DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu'
-import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import type { User } from '@/types'
 import { formatCurrency, getInitials, cn } from '@/lib/utils'
 import {
   Trophy, TrendingUp, Target, UserPlus, MoreVertical,
-  Pencil, Trash2, RefreshCw, Loader2,
+  Pencil, Trash2, RefreshCw, Loader2, LayoutGrid, List,
 } from 'lucide-react'
 
 /* ─── Tipo para estatísticas de vendedor (calculadas localmente) ── */
@@ -214,9 +213,64 @@ function VendedorModal({
   )
 }
 
+function TransferDeleteDialog({
+  open, onOpenChange, seller, otherSellers, onConfirm, disabled,
+}: {
+  open: boolean; onOpenChange: (v: boolean) => void
+  seller: SellerRow | null; otherSellers: SellerRow[]
+  onConfirm: (transferToId: string) => void; disabled: boolean
+}) {
+  const [transferToId, setTransferToId] = useState('')
+
+  useEffect(() => {
+    if (open && otherSellers.length > 0) {
+      setTransferToId(otherSellers[0].user.id)
+    }
+  }, [open, otherSellers])
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>Desativar Vendedor</DialogTitle>
+          <DialogDescription>
+            As oportunidades, clientes e tarefas de <strong>{seller?.user.name}</strong> serão transferidos para outro vendedor antes da desativação.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4 py-2">
+          <div>
+            <Label className="mb-1.5 block">Transferir registros para</Label>
+            {otherSellers.length === 0 ? (
+              <p className="text-sm text-amber-600 bg-amber-50 p-3 rounded-lg">
+                Nenhum outro vendedor disponível. Cadastre outro vendedor antes de desativar este.
+              </p>
+            ) : (
+              <select value={transferToId} onChange={e => setTransferToId(e.target.value)}
+                className="w-full text-sm border border-slate-200 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                {otherSellers.map(s => (
+                  <option key={s.user.id} value={s.user.id}>{s.user.name}</option>
+                ))}
+              </select>
+            )}
+          </div>
+        </div>
+        <DialogFooter className="gap-2">
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={disabled}>Cancelar</Button>
+          <Button variant="destructive" disabled={!transferToId || otherSellers.length === 0 || disabled}
+            onClick={() => onConfirm(transferToId)}>
+            {disabled && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+            Desativar e Transferir
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
 export default function VendedoresPage() {
   const [sellers, setSellers] = useState<SellerRow[]>([])
   const [loading, setLoading] = useState(true)
+  const [view, setView] = useState<'card' | 'list'>('card')
   const [modalOpen, setModalOpen] = useState(false)
   const [editTarget, setEditTarget] = useState<User | undefined>()
   const [deleteTarget, setDeleteTarget] = useState<SellerRow | null>(null)
@@ -266,10 +320,14 @@ export default function VendedoresPage() {
     setEditTarget(undefined)
   }
 
-  async function handleDelete(id: string) {
+  async function handleDelete(id: string, transferToId: string) {
     setDeleting(true)
     try {
-      await fetch(`/api/users/${id}`, { method: 'DELETE' })
+      await fetch(`/api/users/${id}`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ transfer_to_id: transferToId }),
+      })
       setSellers((prev) => prev.filter((s) => s.user.id !== id))
     } catch {
       // Manter estado local
@@ -308,10 +366,22 @@ export default function VendedoresPage() {
         <p className="text-sm text-slate-500">
           <span className="font-semibold text-slate-900">{sellers.length}</span> vendedor{sellers.length !== 1 ? 'es' : ''} na equipe
         </p>
-        <Button size="sm" className="gap-1.5" onClick={openNew}>
-          <UserPlus className="h-3.5 w-3.5" />
-          Novo Vendedor
-        </Button>
+        <div className="flex items-center gap-2">
+          <div className="flex rounded-lg border border-slate-200 overflow-hidden">
+            <button onClick={() => setView('card')} title="Cards"
+              className={cn('px-2.5 py-1.5 transition-colors', view === 'card' ? 'bg-indigo-600 text-white' : 'text-slate-500 hover:bg-slate-50')}>
+              <LayoutGrid className="h-3.5 w-3.5" />
+            </button>
+            <button onClick={() => setView('list')} title="Lista"
+              className={cn('px-2.5 py-1.5 transition-colors', view === 'list' ? 'bg-indigo-600 text-white' : 'text-slate-500 hover:bg-slate-50')}>
+              <List className="h-3.5 w-3.5" />
+            </button>
+          </div>
+          <Button size="sm" className="gap-1.5" onClick={openNew}>
+            <UserPlus className="h-3.5 w-3.5" />
+            Novo Vendedor
+          </Button>
+        </div>
       </div>
 
       <div className="flex-1 overflow-y-auto p-4 lg:p-6 space-y-6">
@@ -355,37 +425,112 @@ export default function VendedoresPage() {
           </Card>
         </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Equipe Comercial</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {sellers.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-12 text-center">
-                <UserPlus className="h-10 w-10 text-slate-300 mb-3" />
-                <p className="text-slate-500 font-medium">Nenhum vendedor cadastrado</p>
-                <p className="text-sm text-slate-400 mt-1">Adicione o primeiro membro da equipe.</p>
-              </div>
-            ) : (
+        {sellers.length === 0 ? (
+          <Card>
+            <CardContent className="flex flex-col items-center justify-center py-12 text-center">
+              <UserPlus className="h-10 w-10 text-slate-300 mb-3" />
+              <p className="text-slate-500 font-medium">Nenhum vendedor cadastrado</p>
+              <p className="text-sm text-slate-400 mt-1">Adicione o primeiro membro da equipe.</p>
+            </CardContent>
+          </Card>
+        ) : view === 'card' ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+            {sellers.map((stat, i) => {
+              const metaProgress = stat.user.meta > 0 ? Math.min((stat.total_value / stat.user.meta) * 100, 100) : 0
+              const isNew = stat.total_opportunities === 0
+              return (
+                <Card key={stat.user.id} className="hover:shadow-md transition-all hover:border-indigo-200">
+                  <CardContent className="pt-4">
+                    <div className="flex items-start justify-between mb-3">
+                      <div className="flex items-center gap-3">
+                        <span className={cn('text-lg font-black w-6 text-center',
+                          i === 0 && 'text-amber-500', i === 1 && 'text-slate-400',
+                          i === 2 && 'text-orange-400', i > 2 && 'text-slate-300',
+                        )}>{i + 1}</span>
+                        <Avatar>
+                          <AvatarFallback className="bg-indigo-100 text-indigo-700 font-semibold">
+                            {getInitials(stat.user.name)}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <p className="text-sm font-semibold text-slate-900">{stat.user.name}</p>
+                          <p className="text-xs text-slate-500">{stat.user.email}</p>
+                        </div>
+                      </div>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <button className="p-1.5 rounded-lg hover:bg-slate-100 transition-colors">
+                            <MoreVertical className="h-4 w-4 text-slate-400" />
+                          </button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => openEdit(stat.user)}>
+                            <Pencil className="h-4 w-4 text-slate-500" /> Editar
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem className="text-red-600 hover:bg-red-50 focus:bg-red-50"
+                            onClick={() => setDeleteTarget(stat)}>
+                            <Trash2 className="h-4 w-4" /> Desativar
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                    <div className="mb-3">
+                      <div className="flex items-center gap-1 mb-1">
+                        <div className="h-1.5 flex-1 bg-slate-100 rounded-full overflow-hidden">
+                          <div className={cn('h-full rounded-full',
+                            metaProgress >= 80 ? 'bg-green-500' : metaProgress >= 50 ? 'bg-amber-400' : 'bg-red-400'
+                          )} style={{ width: `${metaProgress}%` }} />
+                        </div>
+                        <span className="text-xs text-slate-500 shrink-0">{metaProgress.toFixed(0)}%</span>
+                      </div>
+                      <p className="text-xs text-slate-400">Meta: {formatCurrency(stat.user.meta)}</p>
+                    </div>
+                    <div className="grid grid-cols-3 gap-2 text-center border-t border-slate-100 pt-3">
+                      <div>
+                        <p className="text-xs text-slate-400">Ganhos</p>
+                        <p className="text-sm font-bold text-green-600">{stat.won}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-slate-400">Conversão</p>
+                        <p className={cn('text-sm font-bold',
+                          stat.conversion_rate >= 35 ? 'text-green-600' : stat.conversion_rate >= 25 ? 'text-amber-600' : 'text-red-500'
+                        )}>{stat.conversion_rate.toFixed(1)}%</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-slate-400">Em aberto</p>
+                        <p className="text-sm font-bold text-slate-700">{stat.open}</p>
+                      </div>
+                    </div>
+                    <div className="mt-2">
+                      <Badge variant={isNew ? 'secondary' : stat.conversion_rate >= 35 ? 'success' : stat.conversion_rate >= 25 ? 'warning' : 'destructive'}>
+                        {isNew ? 'Novo' : stat.conversion_rate >= 35 ? 'Destaque' : stat.conversion_rate >= 25 ? 'Regular' : 'Atenção'}
+                      </Badge>
+                    </div>
+                  </CardContent>
+                </Card>
+              )
+            })}
+          </div>
+        ) : (
+          <Card>
+            <CardHeader><CardTitle>Equipe Comercial</CardTitle></CardHeader>
+            <CardContent>
               <div className="space-y-3">
                 {sellers.map((stat, i) => {
-                  const metaProgress = stat.user.meta > 0
-                    ? Math.min((stat.total_value / stat.user.meta) * 100, 100) : 0
+                  const metaProgress = stat.user.meta > 0 ? Math.min((stat.total_value / stat.user.meta) * 100, 100) : 0
                   const isNew = stat.total_opportunities === 0
-
                   return (
                     <div key={stat.user.id} className="flex flex-wrap items-center gap-3 p-4 rounded-xl border border-slate-100 hover:border-indigo-100 hover:bg-slate-50 transition-all">
                       <span className={cn('text-lg font-black w-6 text-center shrink-0',
                         i === 0 && 'text-amber-500', i === 1 && 'text-slate-400',
                         i === 2 && 'text-orange-400', i > 2 && 'text-slate-300',
                       )}>{i + 1}</span>
-
                       <Avatar>
                         <AvatarFallback className="bg-indigo-100 text-indigo-700 font-semibold">
                           {getInitials(stat.user.name)}
                         </AvatarFallback>
                       </Avatar>
-
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
                           <p className="text-sm font-semibold text-slate-900">{stat.user.name}</p>
@@ -398,12 +543,9 @@ export default function VendedoresPage() {
                               metaProgress >= 80 ? 'bg-green-500' : metaProgress >= 50 ? 'bg-amber-400' : 'bg-red-400'
                             )} style={{ width: `${metaProgress}%` }} />
                           </div>
-                          <span className="text-xs text-slate-500">
-                            {metaProgress.toFixed(0)}% de {formatCurrency(stat.user.meta)}
-                          </span>
+                          <span className="text-xs text-slate-500">{metaProgress.toFixed(0)}% de {formatCurrency(stat.user.meta)}</span>
                         </div>
                       </div>
-
                       {!isNew && (
                         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-6 text-center w-full lg:w-auto">
                           <div>
@@ -426,12 +568,9 @@ export default function VendedoresPage() {
                           </div>
                         </div>
                       )}
-
                       <Badge variant={isNew ? 'secondary' : stat.conversion_rate >= 35 ? 'success' : stat.conversion_rate >= 25 ? 'warning' : 'destructive'}>
                         {isNew ? 'Novo' : stat.conversion_rate >= 35 ? 'Destaque' : stat.conversion_rate >= 25 ? 'Regular' : 'Atenção'}
                       </Badge>
-
-                      {/* Actions */}
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <button className="p-1.5 rounded-lg hover:bg-slate-100 transition-colors shrink-0">
@@ -440,16 +579,12 @@ export default function VendedoresPage() {
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                           <DropdownMenuItem onClick={() => openEdit(stat.user)}>
-                            <Pencil className="h-4 w-4 text-slate-500" />
-                            Editar
+                            <Pencil className="h-4 w-4 text-slate-500" /> Editar
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
-                          <DropdownMenuItem
-                            className="text-red-600 hover:bg-red-50 focus:bg-red-50"
-                            onClick={() => setDeleteTarget(stat)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                            Desativar
+                          <DropdownMenuItem className="text-red-600 hover:bg-red-50 focus:bg-red-50"
+                            onClick={() => setDeleteTarget(stat)}>
+                            <Trash2 className="h-4 w-4" /> Desativar
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
@@ -457,9 +592,9 @@ export default function VendedoresPage() {
                   )
                 })}
               </div>
-            )}
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        )}
       </div>
 
       <VendedorModal
@@ -469,12 +604,12 @@ export default function VendedoresPage() {
         onSave={handleSave}
       />
 
-      <ConfirmDialog
+      <TransferDeleteDialog
         open={!!deleteTarget}
-        onOpenChange={(v) => !v && setDeleteTarget(null)}
-        title="Desativar Vendedor"
-        description={`Tem certeza que deseja desativar ${deleteTarget?.user.name}? O vendedor perderá o acesso ao sistema.`}
-        onConfirm={() => deleteTarget && handleDelete(deleteTarget.user.id)}
+        onOpenChange={v => !v && setDeleteTarget(null)}
+        seller={deleteTarget}
+        otherSellers={sellers.filter(s => s.user.id !== deleteTarget?.user.id)}
+        onConfirm={transferToId => deleteTarget && handleDelete(deleteTarget.user.id, transferToId)}
         disabled={deleting}
       />
     </div>

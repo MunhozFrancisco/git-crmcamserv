@@ -95,6 +95,11 @@ enum AlertType {
   info
 }
 
+enum ClientType {
+  privado
+  governo
+}
+
 // ── Models ───────────────────────────────────────────────────
 
 model User {
@@ -144,6 +149,9 @@ model Client {
   source          ClientSource @default(outro)
   temperature     Temperature  @default(morno)
   responsibleName String?      @map("responsible_name")
+  clientType      ClientType   @default(privado) @map("client_type")
+  phone           String?
+  whatsapp        String?
   assignedTo      String       @map("assigned_to") @db.Uuid
   createdAt       DateTime     @default(now()) @map("created_at")
   updatedAt       DateTime     @updatedAt @map("updated_at")
@@ -184,8 +192,9 @@ model Opportunity {
   assignedTo        String            @map("assigned_to") @db.Uuid
   score             Int               @default(50)
   riskLevel         RiskLevel         @default(medio) @map("risk_level")
-  expectedCloseDate DateTime?         @map("expected_close_date") @db.Date
-  lastInteraction   DateTime          @default(now()) @map("last_interaction") @db.Date
+  expectedCloseDate     DateTime? @map("expected_close_date") @db.Date
+  nextInteractionDate   DateTime? @map("next_interaction_date") @db.Date
+  lastInteraction       DateTime  @default(now()) @map("last_interaction") @db.Date
   createdAt         DateTime          @default(now()) @map("created_at")
   updatedAt         DateTime          @updatedAt @map("updated_at")
 
@@ -240,7 +249,6 @@ model Product {
   description String?
   type        ProductType
   category    ProductCategory
-  price       Decimal         @default(0) @db.Decimal(12, 2)
   unit        String          @default("único")
   active      Boolean         @default(true)
   createdAt   DateTime        @default(now()) @map("created_at")

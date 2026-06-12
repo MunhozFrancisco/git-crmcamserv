@@ -19,7 +19,6 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       description: body.description,
       type: body.type,
       category: body.category,
-      price: body.price,
       unit: body.unit,
       active: body.active,
     },
