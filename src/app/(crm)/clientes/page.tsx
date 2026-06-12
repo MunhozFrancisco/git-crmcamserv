@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useUser } from '@/contexts/user-context'
 import { Header } from '@/components/layout/header'
 import { Card, CardContent } from '@/components/ui/card'
@@ -17,22 +17,22 @@ import {
   DropdownMenuItem, DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
-import { CLIENTS, USERS } from '@/lib/mock-data'
 import type { Client, Contact } from '@/types'
 import { formatDate, getInitials, cn } from '@/lib/utils'
 import {
   Search, Plus, MoreVertical, Pencil, Trash2,
   Globe, MapPin, Hash, Briefcase, Users,
   Phone, Mail, MessageCircle, Star, ChevronLeft,
-  ArrowUpCircle,
+  ArrowUpCircle, Loader2,
 } from 'lucide-react'
 
-const vendedores = USERS.filter(u => u.role === 'vendedor')
+/* ─── Tipos auxiliares ────────────────────────────────────── */
+type UserBasic = { id: string; name: string; role: string }
 
 const temperatureConfig = {
   quente: { label: 'Quente', color: 'text-red-600 bg-red-50 border-red-100', dot: 'bg-red-500', icon: '🔥' },
-  morno: { label: 'Morno', color: 'text-amber-600 bg-amber-50 border-amber-100', dot: 'bg-amber-400', icon: '🌤' },
-  frio: { label: 'Frio', color: 'text-blue-600 bg-blue-50 border-blue-100', dot: 'bg-blue-400', icon: '🧊' },
+  morno:  { label: 'Morno',  color: 'text-amber-600 bg-amber-50 border-amber-100', dot: 'bg-amber-400', icon: '🌤' },
+  frio:   { label: 'Frio',   color: 'text-blue-600 bg-blue-50 border-blue-100', dot: 'bg-blue-400', icon: '🧊' },
 }
 
 function formatCNPJ(v: string) {
@@ -54,9 +54,10 @@ type ClientForm = {
   temperature: Client['temperature']; responsible_name: string; assigned_to: string
 }
 
-function ClienteModal({ open, onOpenChange, initial, currentUserId, isGestor, onSave }: {
+function ClienteModal({ open, onOpenChange, initial, currentUserId, isGestor, vendedores, onSave }: {
   open: boolean; onOpenChange: (v: boolean) => void
   initial?: Client; currentUserId: string; isGestor: boolean
+  vendedores: UserBasic[]
   onSave: (c: Client) => void
 }) {
   const isEdit = !!initial
@@ -73,18 +74,68 @@ function ClienteModal({ open, onOpenChange, initial, currentUserId, isGestor, on
     responsible_name: initial?.responsible_name ?? '',
     assigned_to: initial?.assigned_to ?? (isGestor ? (vendedores[0]?.id ?? currentUserId) : currentUserId),
   })
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+
+  // Resetar form ao abrir
+  useEffect(() => {
+    if (open) {
+      setForm({
+        status: initial?.status ?? 'lead',
+        name: initial?.name ?? '',
+        razao_social: initial?.razao_social ?? '',
+        cnpj: initial?.cnpj ?? '',
+        site: initial?.site ?? '',
+        segment: initial?.segment ?? '',
+        address: initial?.address ?? '',
+        source: initial?.source ?? 'outro',
+        temperature: initial?.temperature ?? 'morno',
+        responsible_name: initial?.responsible_name ?? '',
+        assigned_to: initial?.assigned_to ?? (isGestor ? (vendedores[0]?.id ?? currentUserId) : currentUserId),
+      })
+      setError('')
+    }
+  }, [open, initial, isGestor, vendedores, currentUserId])
 
   function field(k: keyof ClientForm, v: string) { setForm(f => ({ ...f, [k]: v })) }
 
-  function handleSave() {
+  async function handleSave() {
     if (!form.name) return
-    onSave({
-      id: initial?.id ?? `c${Date.now()}`,
-      contacts: initial?.contacts ?? [],
-      created_at: initial?.created_at ?? new Date().toISOString().split('T')[0],
-      ...form,
-    })
-    onOpenChange(false)
+    setSaving(true)
+    setError('')
+    try {
+      const url = isEdit ? `/api/clients/${initial!.id}` : '/api/clients'
+      const method = isEdit ? 'PATCH' : 'POST'
+      const res = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(form),
+      })
+      if (!res.ok) throw new Error(await res.text())
+      const saved = await res.json()
+      // Normalizar campos do banco para o tipo Client do frontend
+      onSave({
+        id: saved.id,
+        status: saved.status,
+        name: saved.name,
+        razao_social: saved.razaoSocial ?? '',
+        cnpj: saved.cnpj ?? '',
+        site: saved.site ?? '',
+        segment: saved.segment ?? '',
+        address: saved.address ?? '',
+        source: saved.source,
+        temperature: saved.temperature,
+        responsible_name: saved.responsibleName ?? '',
+        assigned_to: saved.assignedTo,
+        created_at: saved.createdAt ? saved.createdAt.split('T')[0] : '',
+        contacts: saved.contacts ? saved.contacts.map(normalizeContact) : (initial?.contacts ?? []),
+      })
+      onOpenChange(false)
+    } catch {
+      setError('Erro ao salvar. Tente novamente.')
+    } finally {
+      setSaving(false)
+    }
   }
 
   return (
@@ -174,7 +225,7 @@ function ClienteModal({ open, onOpenChange, initial, currentUserId, isGestor, on
                   {vendedores.map(u => <option key={u.id} value={u.id}>{u.name.split(' ')[0]}</option>)}
                 </select>
               ) : (
-                <Input value={USERS.find(u => u.id === currentUserId)?.name.split(' ')[0] ?? ''} disabled />
+                <Input value={vendedores.find(u => u.id === currentUserId)?.name.split(' ')[0] ?? ''} disabled />
               )}
             </div>
           </div>
@@ -188,16 +239,36 @@ function ClienteModal({ open, onOpenChange, initial, currentUserId, isGestor, on
             <Label className="mb-1.5 block">Nome do Responsável Principal</Label>
             <Input placeholder="Contato principal na empresa" value={form.responsible_name} onChange={e => field('responsible_name', e.target.value)} />
           </div>
+
+          {error && <p className="text-sm text-red-600">{error}</p>}
         </div>
         <DialogFooter className="gap-2 mt-2">
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
-          <Button onClick={handleSave} disabled={!form.name}>
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>Cancelar</Button>
+          <Button onClick={handleSave} disabled={!form.name || saving}>
+            {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
             {isEdit ? 'Salvar Alterações' : 'Cadastrar'}
           </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
   )
+}
+
+/* ═══════════════════════════════════════════
+   NORMALIZAÇÃO DE CAMPOS DO BANCO → FRONTEND
+══════════════════════════════════════════════ */
+function normalizeContact(c: Record<string, unknown>): Contact {
+  return {
+    id: c.id as string,
+    client_id: (c.clientId ?? c.client_id) as string,
+    name: c.name as string,
+    cargo: (c.cargo ?? '') as string,
+    department: (c.department ?? '') as string,
+    email: (c.email ?? '') as string,
+    phone: (c.phone ?? '') as string,
+    whatsapp: (c.whatsapp ?? '') as string,
+    is_primary: (c.isPrimary ?? c.is_primary ?? false) as boolean,
+  }
 }
 
 /* ═══════════════════════════════════════════
@@ -219,13 +290,53 @@ function ContatoModal({ open, onOpenChange, clientId, initial, onSave }: {
     phone: initial?.phone ?? '', whatsapp: initial?.whatsapp ?? '',
     is_primary: initial?.is_primary ?? false,
   })
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+    if (open) {
+      setForm({
+        name: initial?.name ?? '', cargo: initial?.cargo ?? '',
+        department: initial?.department ?? '', email: initial?.email ?? '',
+        phone: initial?.phone ?? '', whatsapp: initial?.whatsapp ?? '',
+        is_primary: initial?.is_primary ?? false,
+      })
+      setError('')
+    }
+  }, [open, initial])
 
   function field(k: keyof ContactForm, v: string | boolean) { setForm(f => ({ ...f, [k]: v })) }
 
-  function handleSave() {
+  async function handleSave() {
     if (!form.name) return
-    onSave({ id: initial?.id ?? `ct${Date.now()}`, client_id: clientId, ...form })
-    onOpenChange(false)
+    setSaving(true)
+    setError('')
+    try {
+      let saved: Record<string, unknown>
+      if (isEdit) {
+        const res = await fetch(`/api/contacts/${initial!.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(form),
+        })
+        if (!res.ok) throw new Error()
+        saved = await res.json()
+      } else {
+        const res = await fetch(`/api/clients/${clientId}/contacts`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(form),
+        })
+        if (!res.ok) throw new Error()
+        saved = await res.json()
+      }
+      onSave(normalizeContact(saved))
+      onOpenChange(false)
+    } catch {
+      setError('Erro ao salvar contato.')
+    } finally {
+      setSaving(false)
+    }
   }
 
   return (
@@ -269,10 +380,12 @@ function ContatoModal({ open, onOpenChange, clientId, initial, onSave }: {
               className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" />
             <span className="text-sm text-slate-700">Marcar como contato principal</span>
           </label>
+          {error && <p className="text-sm text-red-600">{error}</p>}
         </div>
         <DialogFooter className="gap-2 mt-2">
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
-          <Button onClick={handleSave} disabled={!form.name}>
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>Cancelar</Button>
+          <Button onClick={handleSave} disabled={!form.name || saving}>
+            {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
             {isEdit ? 'Salvar Alterações' : 'Adicionar Contato'}
           </Button>
         </DialogFooter>
@@ -289,6 +402,7 @@ function ContatosManager({ client, onUpdate }: { client: Client; onUpdate: (c: C
   const [formOpen, setFormOpen] = useState(false)
   const [editContact, setEditContact] = useState<Contact | undefined>()
   const [deleteContact, setDeleteContact] = useState<Contact | null>(null)
+  const [deleting, setDeleting] = useState(false)
   const count = client.contacts.length
 
   function saveContact(contact: Contact) {
@@ -301,9 +415,31 @@ function ContatosManager({ client, onUpdate }: { client: Client; onUpdate: (c: C
     setEditContact(undefined)
   }
 
-  function deleteById(id: string) {
-    onUpdate({ ...client, contacts: client.contacts.filter(c => c.id !== id) })
-    setDeleteContact(null)
+  async function makePrimary(contact: Contact) {
+    try {
+      await fetch(`/api/contacts/${contact.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...contact, is_primary: true }),
+      })
+      const updated = client.contacts.map(c => ({ ...c, is_primary: c.id === contact.id }))
+      onUpdate({ ...client, contacts: updated })
+    } catch {
+      // Silencioso - atualização local já foi feita
+    }
+  }
+
+  async function deleteById(id: string) {
+    setDeleting(true)
+    try {
+      await fetch(`/api/contacts/${id}`, { method: 'DELETE' })
+      onUpdate({ ...client, contacts: client.contacts.filter(c => c.id !== id) })
+    } catch {
+      // manter local
+    } finally {
+      setDeleting(false)
+      setDeleteContact(null)
+    }
   }
 
   return (
@@ -385,7 +521,7 @@ function ContatosManager({ client, onUpdate }: { client: Client; onUpdate: (c: C
                     <DropdownMenuContent align="end">
                       {!contact.is_primary && (
                         <>
-                          <DropdownMenuItem onClick={() => saveContact({ ...contact, is_primary: true })}>
+                          <DropdownMenuItem onClick={() => makePrimary(contact)}>
                             <Star className="h-4 w-4 text-amber-500" />Tornar Principal
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
@@ -414,7 +550,8 @@ function ContatosManager({ client, onUpdate }: { client: Client; onUpdate: (c: C
       <ConfirmDialog open={!!deleteContact} onOpenChange={v => !v && setDeleteContact(null)}
         title="Excluir Contato"
         description={`Tem certeza que deseja excluir "${deleteContact?.name}"?`}
-        onConfirm={() => deleteContact && deleteById(deleteContact.id)} />
+        onConfirm={() => deleteContact && deleteById(deleteContact.id)}
+        disabled={deleting} />
     </>
   )
 }
@@ -428,15 +565,63 @@ export default function ClientesPage() {
   const { currentUser } = useUser()
   const isGestor = currentUser?.role === 'gestor'
 
-  const [clients, setClients] = useState<Client[]>(CLIENTS)
+  const [clients, setClients] = useState<Client[]>([])
+  const [vendedores, setVendedores] = useState<UserBasic[]>([])
+  const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('todos')
   const [tempFilter, setTempFilter] = useState('')
   const [modalOpen, setModalOpen] = useState(false)
   const [editTarget, setEditTarget] = useState<Client | undefined>()
   const [deleteTarget, setDeleteTarget] = useState<Client | null>(null)
+  const [deleting, setDeleting] = useState(false)
 
-  const getUserName = (id: string) => USERS.find(u => u.id === id)?.name ?? '—'
+  const loadClients = useCallback(async () => {
+    try {
+      const res = await fetch('/api/clients')
+      if (!res.ok) return
+      const data = await res.json()
+      setClients(data.map((c: Record<string, unknown>) => ({
+        id: c.id,
+        status: c.status,
+        name: c.name,
+        razao_social: c.razaoSocial ?? '',
+        cnpj: c.cnpj ?? '',
+        site: c.site ?? '',
+        segment: c.segment ?? '',
+        address: c.address ?? '',
+        source: c.source,
+        temperature: c.temperature,
+        responsible_name: c.responsibleName ?? '',
+        assigned_to: c.assignedTo,
+        created_at: c.createdAt ? (c.createdAt as string).split('T')[0] : '',
+        contacts: Array.isArray(c.contacts)
+          ? (c.contacts as Record<string, unknown>[]).map(normalizeContact)
+          : [],
+      })))
+    } catch {
+      // Erro silencioso
+    }
+  }, [])
+
+  useEffect(() => {
+    async function init() {
+      setLoading(true)
+      // Carregar clientes e vendedores em paralelo
+      const [, usersRes] = await Promise.all([
+        loadClients(),
+        fetch('/api/users'),
+      ])
+      if (usersRes.ok) {
+        const users = await usersRes.json()
+        setVendedores(users.filter((u: UserBasic) => u.role === 'vendedor' || u.role === 'gestor'))
+      }
+      setLoading(false)
+    }
+    init()
+  }, [loadClients])
+
+  const getUserName = (id: string) => vendedores.find(u => u.id === id)?.name ?? '—'
 
   const visible = isGestor ? clients : clients.filter(c => c.assigned_to === currentUser?.id)
 
@@ -464,13 +649,44 @@ export default function ClientesPage() {
     setEditTarget(undefined)
   }
 
-  function handleDelete(id: string) {
-    setClients(prev => prev.filter(c => c.id !== id))
-    setDeleteTarget(null)
+  async function handleDelete(id: string) {
+    setDeleting(true)
+    try {
+      await fetch(`/api/clients/${id}`, { method: 'DELETE' })
+      setClients(prev => prev.filter(c => c.id !== id))
+    } catch {
+      // Manter local
+    } finally {
+      setDeleting(false)
+      setDeleteTarget(null)
+    }
   }
 
-  function convertToCliente(client: Client) {
-    updateClient({ ...client, status: 'cliente' })
+  async function convertToCliente(client: Client) {
+    try {
+      const res = await fetch(`/api/clients/${client.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'cliente' }),
+      })
+      if (res.ok) {
+        updateClient({ ...client, status: 'cliente' })
+      }
+    } catch {
+      // Atualiza localmente mesmo assim
+      updateClient({ ...client, status: 'cliente' })
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="flex flex-col h-full">
+        <Header title="Clientes" subtitle="Carregando..." />
+        <div className="flex-1 flex items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-indigo-500" />
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -668,6 +884,7 @@ export default function ClientesPage() {
           initial={editTarget}
           currentUserId={currentUser.id}
           isGestor={isGestor}
+          vendedores={vendedores}
           onSave={updateClient}
         />
       )}
@@ -678,6 +895,7 @@ export default function ClientesPage() {
         title="Excluir Registro"
         description={`Tem certeza que deseja excluir "${deleteTarget?.name}" e todos os seus contatos?`}
         onConfirm={() => deleteTarget && handleDelete(deleteTarget.id)}
+        disabled={deleting}
       />
     </div>
   )

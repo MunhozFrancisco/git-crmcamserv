@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Header } from '@/components/layout/header'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -17,12 +17,39 @@ import {
   DropdownMenuItem, DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
-import { SELLER_STATS } from '@/lib/mock-data'
-import type { SellerStats, User } from '@/types'
+import type { User } from '@/types'
 import { formatCurrency, getInitials, cn } from '@/lib/utils'
-import { Trophy, TrendingUp, Target, UserPlus, MoreVertical, Pencil, Trash2, RefreshCw } from 'lucide-react'
+import {
+  Trophy, TrendingUp, Target, UserPlus, MoreVertical,
+  Pencil, Trash2, RefreshCw, Loader2,
+} from 'lucide-react'
+
+/* ─── Tipo para estatísticas de vendedor (calculadas localmente) ── */
+type SellerRow = {
+  user: User
+  total_opportunities: number
+  won: number
+  lost: number
+  open: number
+  conversion_rate: number
+  total_value: number
+  avg_ticket: number
+  avg_close_days: number
+}
 
 type FormState = { name: string; email: string; phone: string; password: string; meta: string }
+
+/* ─── Normalizar usuário do banco → User ────────────────── */
+function normalizeUser(u: Record<string, unknown>): User {
+  return {
+    id: u.id as string,
+    name: u.name as string,
+    email: u.email as string,
+    role: u.role as 'gestor' | 'vendedor',
+    meta: Number(u.meta ?? 0),
+    active: (u.active ?? true) as boolean,
+  }
+}
 
 function VendedorModal({
   open, onOpenChange, initial, onSave,
@@ -40,7 +67,23 @@ function VendedorModal({
     password: '',
     meta: String(initial?.meta ?? ''),
   })
+  const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+    if (open) {
+      setForm({
+        name: initial?.name ?? '',
+        email: initial?.email ?? '',
+        phone: '',
+        password: '',
+        meta: String(initial?.meta ?? ''),
+      })
+      setSaved(false)
+      setError('')
+    }
+  }, [open, initial])
 
   function field(key: keyof FormState, value: string) {
     setForm((f) => ({ ...f, [key]: value }))
@@ -52,25 +95,53 @@ function VendedorModal({
     setForm((f) => ({ ...f, password: `Camserv@${pw}` }))
   }
 
-  function handleSave() {
+  async function handleSave() {
     if (!form.name || !form.email || !form.meta) return
-    const user: User = {
-      id: initial?.id ?? `u${Date.now()}`,
-      name: form.name,
-      email: form.email,
-      role: 'vendedor',
-      meta: parseFloat(form.meta),
+    if (!isEdit && !form.password) {
+      setError('Senha é obrigatória para novo vendedor.')
+      return
     }
-    onSave(user)
-    if (!isEdit) {
-      setSaved(true)
-      setTimeout(() => {
+    setSaving(true)
+    setError('')
+    try {
+      const payload: Record<string, unknown> = {
+        name: form.name,
+        email: form.email,
+        meta: parseFloat(form.meta),
+        role: 'vendedor',
+      }
+      if (form.password) payload.password = form.password
+
+      const url = isEdit ? `/api/users/${initial!.id}` : '/api/users'
+      const method = isEdit ? 'PATCH' : 'POST'
+
+      const res = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+
+      if (!res.ok) {
+        const err = await res.json()
+        throw new Error(err.error ?? 'Erro ao salvar')
+      }
+
+      const saved = await res.json()
+      onSave(normalizeUser(saved))
+
+      if (!isEdit) {
+        setSaved(true)
+        setTimeout(() => {
+          onOpenChange(false)
+          setSaved(false)
+        }, 1200)
+      } else {
         onOpenChange(false)
-        setSaved(false)
-        setForm({ name: '', email: '', phone: '', password: '', meta: '' })
-      }, 1200)
-    } else {
-      onOpenChange(false)
+      }
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Erro ao salvar. Tente novamente.')
+    } finally {
+      setSaving(false)
     }
   }
 
@@ -104,12 +175,12 @@ function VendedorModal({
                 <Input type="email" value={form.email} onChange={(e) => field('email', e.target.value)} placeholder="vendedor@camserv.com.br" />
               </div>
               <div>
-                <Label className="mb-1.5 block">Senha sugerida</Label>
+                <Label className="mb-1.5 block">{isEdit ? 'Nova senha (deixe em branco para manter)' : 'Senha *'}</Label>
                 <div className="flex gap-2">
                   <Input
                     value={form.password}
                     onChange={(e) => field('password', e.target.value)}
-                    placeholder="Ex: Camserv@2025"
+                    placeholder={isEdit ? 'Deixe em branco para não alterar' : 'Ex: Camserv@2025'}
                     className="flex-1"
                   />
                   <Button type="button" variant="outline" size="sm" onClick={generatePassword} title="Gerar senha">
@@ -127,10 +198,12 @@ function VendedorModal({
                 <Input type="number" min="0" step="1000" value={form.meta} onChange={(e) => field('meta', e.target.value)} placeholder="Ex: 25000" />
                 <p className="text-xs text-slate-400 mt-1">Define a barra de progresso no ranking</p>
               </div>
+              {error && <p className="text-sm text-red-600">{error}</p>}
             </div>
             <DialogFooter className="gap-2 mt-2">
-              <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
-              <Button onClick={handleSave} disabled={!form.name || !form.email || !form.meta}>
+              <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>Cancelar</Button>
+              <Button onClick={handleSave} disabled={!form.name || !form.email || !form.meta || saving}>
+                {saving && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
                 {isEdit ? 'Salvar Alterações' : 'Cadastrar Vendedor'}
               </Button>
             </DialogFooter>
@@ -142,13 +215,45 @@ function VendedorModal({
 }
 
 export default function VendedoresPage() {
-  const [stats, setStats] = useState<SellerStats[]>(SELLER_STATS)
+  const [sellers, setSellers] = useState<SellerRow[]>([])
+  const [loading, setLoading] = useState(true)
   const [modalOpen, setModalOpen] = useState(false)
   const [editTarget, setEditTarget] = useState<User | undefined>()
-  const [deleteTarget, setDeleteTarget] = useState<SellerStats | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<SellerRow | null>(null)
+  const [deleting, setDeleting] = useState(false)
+
+  useEffect(() => {
+    async function load() {
+      setLoading(true)
+      try {
+        const res = await fetch('/api/users')
+        if (res.ok) {
+          const data = await res.json()
+          // Filtrar apenas vendedores ativos e montar estrutura SellerRow
+          const rows: SellerRow[] = data
+            .filter((u: Record<string, unknown>) => u.role === 'vendedor' && u.active !== false)
+            .map((u: Record<string, unknown>) => ({
+              user: normalizeUser(u),
+              total_opportunities: 0,
+              won: 0,
+              lost: 0,
+              open: 0,
+              conversion_rate: 0,
+              total_value: 0,
+              avg_ticket: 0,
+              avg_close_days: 0,
+            }))
+          setSellers(rows)
+        }
+      } finally {
+        setLoading(false)
+      }
+    }
+    load()
+  }, [])
 
   function handleSave(user: User) {
-    setStats((prev) => {
+    setSellers((prev) => {
       const exists = prev.find((s) => s.user.id === user.id)
       if (exists) {
         return prev.map((s) => s.user.id === user.id ? { ...s, user } : s)
@@ -161,9 +266,17 @@ export default function VendedoresPage() {
     setEditTarget(undefined)
   }
 
-  function handleDelete(id: string) {
-    setStats((prev) => prev.filter((s) => s.user.id !== id))
-    setDeleteTarget(null)
+  async function handleDelete(id: string) {
+    setDeleting(true)
+    try {
+      await fetch(`/api/users/${id}`, { method: 'DELETE' })
+      setSellers((prev) => prev.filter((s) => s.user.id !== id))
+    } catch {
+      // Manter estado local
+    } finally {
+      setDeleting(false)
+      setDeleteTarget(null)
+    }
   }
 
   function openEdit(user: User) {
@@ -176,13 +289,24 @@ export default function VendedoresPage() {
     setModalOpen(true)
   }
 
+  if (loading) {
+    return (
+      <div className="flex flex-col h-full">
+        <Header title="Vendedores" subtitle="Carregando equipe..." />
+        <div className="flex-1 flex items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-indigo-500" />
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="flex flex-col h-full">
       <Header title="Vendedores" subtitle="Equipe comercial — gerenciado pelo gestor" />
 
       <div className="flex items-center justify-between px-4 lg:px-6 py-3 border-b border-slate-200 bg-white">
         <p className="text-sm text-slate-500">
-          <span className="font-semibold text-slate-900">{stats.length}</span> vendedor{stats.length !== 1 ? 'es' : ''} na equipe
+          <span className="font-semibold text-slate-900">{sellers.length}</span> vendedor{sellers.length !== 1 ? 'es' : ''} na equipe
         </p>
         <Button size="sm" className="gap-1.5" onClick={openNew}>
           <UserPlus className="h-3.5 w-3.5" />
@@ -191,6 +315,7 @@ export default function VendedoresPage() {
       </div>
 
       <div className="flex-1 overflow-y-auto p-4 lg:p-6 space-y-6">
+        {/* Resumo */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <Card>
             <CardContent className="pt-5">
@@ -198,8 +323,12 @@ export default function VendedoresPage() {
                 <Trophy className="h-4 w-4 text-amber-500" />
                 <p className="text-sm text-slate-500">Melhor Conversão</p>
               </div>
-              <p className="text-lg font-bold text-slate-900">{stats[0]?.user.name.split(' ')[0] ?? '—'}</p>
-              <p className="text-xs text-green-600 font-semibold">{stats[0]?.conversion_rate.toFixed(1)}% taxa</p>
+              <p className="text-lg font-bold text-slate-900">
+                {sellers.sort((a, b) => b.conversion_rate - a.conversion_rate)[0]?.user.name.split(' ')[0] ?? '—'}
+              </p>
+              <p className="text-xs text-green-600 font-semibold">
+                {sellers[0]?.conversion_rate.toFixed(1) ?? '0.0'}% taxa
+              </p>
             </CardContent>
           </Card>
           <Card>
@@ -208,7 +337,7 @@ export default function VendedoresPage() {
                 <Target className="h-4 w-4 text-indigo-500" />
                 <p className="text-sm text-slate-500">Total em Aberto</p>
               </div>
-              <p className="text-lg font-bold text-slate-900">{stats.reduce((s, v) => s + v.open, 0)}</p>
+              <p className="text-lg font-bold text-slate-900">{sellers.reduce((s, v) => s + v.open, 0)}</p>
               <p className="text-xs text-slate-500">oportunidades ativas</p>
             </CardContent>
           </Card>
@@ -219,7 +348,7 @@ export default function VendedoresPage() {
                 <p className="text-sm text-slate-500">Volume Total</p>
               </div>
               <p className="text-lg font-bold text-slate-900">
-                {formatCurrency(stats.reduce((s, v) => s + v.total_value, 0))}
+                {formatCurrency(sellers.reduce((s, v) => s + v.total_value, 0))}
               </p>
               <p className="text-xs text-slate-500">em negócios fechados</p>
             </CardContent>
@@ -228,99 +357,107 @@ export default function VendedoresPage() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Ranking da Equipe</CardTitle>
+            <CardTitle>Equipe Comercial</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-3">
-              {stats.map((stat, i) => {
-                const metaProgress = stat.user.meta > 0
-                  ? Math.min((stat.total_value / stat.user.meta) * 100, 100) : 0
-                const isNew = stat.total_opportunities === 0
+            {sellers.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-12 text-center">
+                <UserPlus className="h-10 w-10 text-slate-300 mb-3" />
+                <p className="text-slate-500 font-medium">Nenhum vendedor cadastrado</p>
+                <p className="text-sm text-slate-400 mt-1">Adicione o primeiro membro da equipe.</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {sellers.map((stat, i) => {
+                  const metaProgress = stat.user.meta > 0
+                    ? Math.min((stat.total_value / stat.user.meta) * 100, 100) : 0
+                  const isNew = stat.total_opportunities === 0
 
-                return (
-                  <div key={stat.user.id} className="flex flex-wrap items-center gap-3 p-4 rounded-xl border border-slate-100 hover:border-indigo-100 hover:bg-slate-50 transition-all">
-                    <span className={cn('text-lg font-black w-6 text-center shrink-0',
-                      i === 0 && 'text-amber-500', i === 1 && 'text-slate-400',
-                      i === 2 && 'text-orange-400', i > 2 && 'text-slate-300',
-                    )}>{i + 1}</span>
+                  return (
+                    <div key={stat.user.id} className="flex flex-wrap items-center gap-3 p-4 rounded-xl border border-slate-100 hover:border-indigo-100 hover:bg-slate-50 transition-all">
+                      <span className={cn('text-lg font-black w-6 text-center shrink-0',
+                        i === 0 && 'text-amber-500', i === 1 && 'text-slate-400',
+                        i === 2 && 'text-orange-400', i > 2 && 'text-slate-300',
+                      )}>{i + 1}</span>
 
-                    <Avatar>
-                      <AvatarFallback className="bg-indigo-100 text-indigo-700 font-semibold">
-                        {getInitials(stat.user.name)}
-                      </AvatarFallback>
-                    </Avatar>
+                      <Avatar>
+                        <AvatarFallback className="bg-indigo-100 text-indigo-700 font-semibold">
+                          {getInitials(stat.user.name)}
+                        </AvatarFallback>
+                      </Avatar>
 
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <p className="text-sm font-semibold text-slate-900">{stat.user.name}</p>
-                        {isNew && <Badge variant="default" className="text-[10px] py-0">Novo</Badge>}
-                      </div>
-                      <p className="text-xs text-slate-500 mb-1">{stat.user.email}</p>
-                      <div className="flex items-center gap-1">
-                        <div className="h-1.5 flex-1 max-w-32 bg-slate-100 rounded-full overflow-hidden">
-                          <div className={cn('h-full rounded-full',
-                            metaProgress >= 80 ? 'bg-green-500' : metaProgress >= 50 ? 'bg-amber-400' : 'bg-red-400'
-                          )} style={{ width: `${metaProgress}%` }} />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <p className="text-sm font-semibold text-slate-900">{stat.user.name}</p>
+                          {isNew && <Badge variant="default" className="text-[10px] py-0">Novo</Badge>}
                         </div>
-                        <span className="text-xs text-slate-500">
-                          {metaProgress.toFixed(0)}% de {formatCurrency(stat.user.meta)}
-                        </span>
+                        <p className="text-xs text-slate-500 mb-1">{stat.user.email}</p>
+                        <div className="flex items-center gap-1">
+                          <div className="h-1.5 flex-1 max-w-32 bg-slate-100 rounded-full overflow-hidden">
+                            <div className={cn('h-full rounded-full',
+                              metaProgress >= 80 ? 'bg-green-500' : metaProgress >= 50 ? 'bg-amber-400' : 'bg-red-400'
+                            )} style={{ width: `${metaProgress}%` }} />
+                          </div>
+                          <span className="text-xs text-slate-500">
+                            {metaProgress.toFixed(0)}% de {formatCurrency(stat.user.meta)}
+                          </span>
+                        </div>
                       </div>
+
+                      {!isNew && (
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-6 text-center w-full lg:w-auto">
+                          <div>
+                            <p className="text-xs text-slate-400">Conversão</p>
+                            <p className={cn('text-sm font-bold',
+                              stat.conversion_rate >= 35 ? 'text-green-600' : stat.conversion_rate >= 25 ? 'text-amber-600' : 'text-red-500'
+                            )}>{stat.conversion_rate.toFixed(1)}%</p>
+                          </div>
+                          <div>
+                            <p className="text-xs text-slate-400">Ticket Médio</p>
+                            <p className="text-sm font-bold text-slate-800">{formatCurrency(stat.avg_ticket)}</p>
+                          </div>
+                          <div>
+                            <p className="text-xs text-slate-400">Ganhos</p>
+                            <p className="text-sm font-bold text-green-600">{stat.won}</p>
+                          </div>
+                          <div>
+                            <p className="text-xs text-slate-400">Ciclo Médio</p>
+                            <p className="text-sm font-bold text-slate-800">{stat.avg_close_days}d</p>
+                          </div>
+                        </div>
+                      )}
+
+                      <Badge variant={isNew ? 'secondary' : stat.conversion_rate >= 35 ? 'success' : stat.conversion_rate >= 25 ? 'warning' : 'destructive'}>
+                        {isNew ? 'Novo' : stat.conversion_rate >= 35 ? 'Destaque' : stat.conversion_rate >= 25 ? 'Regular' : 'Atenção'}
+                      </Badge>
+
+                      {/* Actions */}
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <button className="p-1.5 rounded-lg hover:bg-slate-100 transition-colors shrink-0">
+                            <MoreVertical className="h-4 w-4 text-slate-400" />
+                          </button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => openEdit(stat.user)}>
+                            <Pencil className="h-4 w-4 text-slate-500" />
+                            Editar
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem
+                            className="text-red-600 hover:bg-red-50 focus:bg-red-50"
+                            onClick={() => setDeleteTarget(stat)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                            Desativar
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
-
-                    {!isNew && (
-                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-6 text-center w-full lg:w-auto">
-                        <div>
-                          <p className="text-xs text-slate-400">Conversão</p>
-                          <p className={cn('text-sm font-bold',
-                            stat.conversion_rate >= 35 ? 'text-green-600' : stat.conversion_rate >= 25 ? 'text-amber-600' : 'text-red-500'
-                          )}>{stat.conversion_rate.toFixed(1)}%</p>
-                        </div>
-                        <div>
-                          <p className="text-xs text-slate-400">Ticket Médio</p>
-                          <p className="text-sm font-bold text-slate-800">{formatCurrency(stat.avg_ticket)}</p>
-                        </div>
-                        <div>
-                          <p className="text-xs text-slate-400">Ganhos</p>
-                          <p className="text-sm font-bold text-green-600">{stat.won}</p>
-                        </div>
-                        <div>
-                          <p className="text-xs text-slate-400">Ciclo Médio</p>
-                          <p className="text-sm font-bold text-slate-800">{stat.avg_close_days}d</p>
-                        </div>
-                      </div>
-                    )}
-
-                    <Badge variant={isNew ? 'secondary' : stat.conversion_rate >= 35 ? 'success' : stat.conversion_rate >= 25 ? 'warning' : 'destructive'}>
-                      {isNew ? 'Novo' : stat.conversion_rate >= 35 ? 'Destaque' : stat.conversion_rate >= 25 ? 'Regular' : 'Atenção'}
-                    </Badge>
-
-                    {/* Actions */}
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <button className="p-1.5 rounded-lg hover:bg-slate-100 transition-colors shrink-0">
-                          <MoreVertical className="h-4 w-4 text-slate-400" />
-                        </button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => openEdit(stat.user)}>
-                          <Pencil className="h-4 w-4 text-slate-500" />
-                          Editar
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem
-                          className="text-red-600 hover:bg-red-50 focus:bg-red-50"
-                          onClick={() => setDeleteTarget(stat)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                          Excluir
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
-                )
-              })}
-            </div>
+                  )
+                })}
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -335,9 +472,10 @@ export default function VendedoresPage() {
       <ConfirmDialog
         open={!!deleteTarget}
         onOpenChange={(v) => !v && setDeleteTarget(null)}
-        title="Excluir Vendedor"
-        description={`Tem certeza que deseja excluir ${deleteTarget?.user.name}? Esta ação não pode ser desfeita.`}
+        title="Desativar Vendedor"
+        description={`Tem certeza que deseja desativar ${deleteTarget?.user.name}? O vendedor perderá o acesso ao sistema.`}
         onConfirm={() => deleteTarget && handleDelete(deleteTarget.user.id)}
+        disabled={deleting}
       />
     </div>
   )

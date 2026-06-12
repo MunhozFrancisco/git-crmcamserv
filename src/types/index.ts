@@ -22,6 +22,7 @@ export interface User {
   role: UserRole
   avatar?: string
   meta: number
+  active?: boolean
 }
 
 export interface Lead {

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Header } from '@/components/layout/header'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -16,10 +16,12 @@ import {
   DropdownMenuItem, DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
-import { PRODUCTS } from '@/lib/mock-data'
 import type { Product, ProductCategory, ProductType } from '@/types'
 import { formatCurrency } from '@/lib/utils'
-import { Plus, Package, Wrench, ToggleLeft, ToggleRight, Search, MoreVertical, Pencil, Trash2 } from 'lucide-react'
+import {
+  Plus, Package, Wrench, ToggleLeft, ToggleRight,
+  Search, MoreVertical, Pencil, Trash2, Loader2,
+} from 'lucide-react'
 
 const CATEGORIES: ProductCategory[] = [
   'Software', 'Hardware', 'Consultoria', 'Suporte', 'Treinamento', 'Infraestrutura', 'Outro'
@@ -38,6 +40,23 @@ const EMPTY_FORM: FormState = {
   name: '', description: '', type: 'serviço', category: 'Software', price: '', unit: '/mês',
 }
 
+/* ─── Normalizar produto do banco → frontend ─────────────── */
+function normalizeProduct(p: Record<string, unknown>): Product {
+  return {
+    id: p.id as string,
+    name: p.name as string,
+    description: (p.description ?? '') as string,
+    type: p.type as ProductType,
+    category: p.category as ProductCategory,
+    price: Number(p.price ?? 0),
+    unit: (p.unit ?? 'único') as string,
+    active: (p.active ?? true) as boolean,
+    created_at: p.createdAt
+      ? (p.createdAt as string).split('T')[0]
+      : (p.created_at as string ?? ''),
+  }
+}
+
 function ProdutoModal({
   open, onOpenChange, initial, onSave,
 }: {
@@ -47,34 +66,76 @@ function ProdutoModal({
   onSave: (p: Product) => void
 }) {
   const isEdit = !!initial
-  const [form, setForm] = useState<FormState>({
-    name: initial?.name ?? '',
-    description: initial?.description ?? '',
-    type: initial?.type ?? 'serviço',
-    category: initial?.category ?? 'Software',
-    price: initial?.price != null ? String(initial.price) : '',
-    unit: initial?.unit ?? '/mês',
-  })
+  const [form, setForm] = useState<FormState>(
+    initial
+      ? {
+          name: initial.name,
+          description: initial.description,
+          type: initial.type,
+          category: initial.category,
+          price: String(initial.price),
+          unit: initial.unit,
+        }
+      : EMPTY_FORM
+  )
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+    if (open) {
+      setForm(
+        initial
+          ? {
+              name: initial.name,
+              description: initial.description,
+              type: initial.type,
+              category: initial.category,
+              price: String(initial.price),
+              unit: initial.unit,
+            }
+          : EMPTY_FORM
+      )
+      setError('')
+    }
+  }, [open, initial])
 
   function field(key: keyof FormState, value: string) {
     setForm((f) => ({ ...f, [key]: value }))
   }
 
-  function handleSave() {
+  async function handleSave() {
     if (!form.name || !form.price) return
-    const product: Product = {
-      id: initial?.id ?? `p${Date.now()}`,
-      name: form.name,
-      description: form.description,
-      type: form.type,
-      category: form.category,
-      price: parseFloat(form.price),
-      unit: form.unit,
-      active: initial?.active ?? true,
-      created_at: initial?.created_at ?? new Date().toISOString().split('T')[0],
+    setSaving(true)
+    setError('')
+    try {
+      const payload = {
+        name: form.name,
+        description: form.description,
+        type: form.type,
+        category: form.category,
+        price: parseFloat(form.price),
+        unit: form.unit,
+        active: initial?.active ?? true,
+      }
+
+      const url = isEdit ? `/api/products/${initial!.id}` : '/api/products'
+      const method = isEdit ? 'PATCH' : 'POST'
+
+      const res = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+
+      if (!res.ok) throw new Error(await res.text())
+      const saved = await res.json()
+      onSave(normalizeProduct(saved))
+      onOpenChange(false)
+    } catch {
+      setError('Erro ao salvar. Tente novamente.')
+    } finally {
+      setSaving(false)
     }
-    onSave(product)
-    onOpenChange(false)
   }
 
   return (
@@ -153,11 +214,14 @@ function ProdutoModal({
               />
             </div>
           </div>
+
+          {error && <p className="text-sm text-red-600">{error}</p>}
         </div>
 
         <DialogFooter className="gap-2 mt-2">
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
-          <Button onClick={handleSave} disabled={!form.name || !form.price}>
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>Cancelar</Button>
+          <Button onClick={handleSave} disabled={!form.name || !form.price || saving}>
+            {saving && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
             {isEdit ? 'Salvar Alterações' : 'Cadastrar'}
           </Button>
         </DialogFooter>
@@ -167,16 +231,49 @@ function ProdutoModal({
 }
 
 export default function ProdutosPage() {
-  const [products, setProducts] = useState<Product[]>(PRODUCTS)
+  const [products, setProducts] = useState<Product[]>([])
+  const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [filterType, setFilterType] = useState<string>('')
   const [filterCategory, setFilterCategory] = useState<string>('')
   const [modalOpen, setModalOpen] = useState(false)
   const [editTarget, setEditTarget] = useState<Product | undefined>()
   const [deleteTarget, setDeleteTarget] = useState<Product | null>(null)
+  const [deleting, setDeleting] = useState(false)
 
-  function toggleActive(id: string) {
-    setProducts((prev) => prev.map((p) => p.id === id ? { ...p, active: !p.active } : p))
+  useEffect(() => {
+    async function load() {
+      setLoading(true)
+      try {
+        const res = await fetch('/api/products')
+        if (res.ok) {
+          const data = await res.json()
+          setProducts(data.map(normalizeProduct))
+        }
+      } finally {
+        setLoading(false)
+      }
+    }
+    load()
+  }, [])
+
+  async function toggleActive(product: Product) {
+    const novoEstado = !product.active
+    // Atualização otimista na UI
+    setProducts((prev) => prev.map((p) => p.id === product.id ? { ...p, active: novoEstado } : p))
+    try {
+      const res = await fetch(`/api/products/${product.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ active: novoEstado }),
+      })
+      if (!res.ok) {
+        // Reverter se falhou
+        setProducts((prev) => prev.map((p) => p.id === product.id ? { ...p, active: product.active } : p))
+      }
+    } catch {
+      setProducts((prev) => prev.map((p) => p.id === product.id ? { ...p, active: product.active } : p))
+    }
   }
 
   function handleSave(p: Product) {
@@ -188,9 +285,17 @@ export default function ProdutosPage() {
     setEditTarget(undefined)
   }
 
-  function handleDelete(id: string) {
-    setProducts((prev) => prev.filter((p) => p.id !== id))
-    setDeleteTarget(null)
+  async function handleDelete(id: string) {
+    setDeleting(true)
+    try {
+      await fetch(`/api/products/${id}`, { method: 'DELETE' })
+      setProducts((prev) => prev.filter((p) => p.id !== id))
+    } catch {
+      // Manter estado local
+    } finally {
+      setDeleting(false)
+      setDeleteTarget(null)
+    }
   }
 
   function openEdit(product: Product) {
@@ -213,6 +318,17 @@ export default function ProdutosPage() {
 
   const ativos = filtered.filter((p) => p.active).length
   const inativos = filtered.filter((p) => !p.active).length
+
+  if (loading) {
+    return (
+      <div className="flex flex-col h-full">
+        <Header title="Produtos & Serviços" subtitle="Carregando catálogo..." />
+        <div className="flex-1 flex items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-indigo-500" />
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="flex flex-col h-full">
@@ -300,7 +416,7 @@ export default function ProdutosPage() {
                   <div className="flex items-center gap-1">
                     <button
                       title={product.active ? 'Desativar' : 'Ativar'}
-                      onClick={() => toggleActive(product.id)}
+                      onClick={() => toggleActive(product)}
                       className="p-1.5 rounded-lg hover:bg-slate-100 transition-colors text-slate-400 hover:text-slate-700"
                     >
                       {product.active
@@ -358,6 +474,7 @@ export default function ProdutosPage() {
         title="Excluir Produto"
         description={`Tem certeza que deseja excluir "${deleteTarget?.name}"? Esta ação não pode ser desfeita.`}
         onConfirm={() => deleteTarget && handleDelete(deleteTarget.id)}
+        disabled={deleting}
       />
     </div>
   )

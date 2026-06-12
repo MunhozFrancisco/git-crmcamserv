@@ -14,14 +14,14 @@ interface ConfirmDialogProps {
   description: string
   confirmLabel?: string
   onConfirm: () => void
+  disabled?: boolean
 }
 
 export function ConfirmDialog({
-  open, onOpenChange, title, description, confirmLabel = 'Excluir', onConfirm,
+  open, onOpenChange, title, description, confirmLabel = 'Excluir', onConfirm, disabled = false,
 }: ConfirmDialogProps) {
   function handleConfirm() {
     onConfirm()
-    onOpenChange(false)
   }
 
   return (
@@ -37,8 +37,8 @@ export function ConfirmDialog({
           <DialogDescription className="pl-[52px]">{description}</DialogDescription>
         </DialogHeader>
         <DialogFooter className="gap-2 mt-2">
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
-          <Button variant="destructive" onClick={handleConfirm}>{confirmLabel}</Button>
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={disabled}>Cancelar</Button>
+          <Button variant="destructive" onClick={handleConfirm} disabled={disabled}>{confirmLabel}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
