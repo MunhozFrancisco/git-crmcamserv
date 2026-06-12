@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
+import { productTypeMap, mapEnum } from '@/lib/enum-maps'
 
 export async function GET() {
   const session = await getServerSession(authOptions)
@@ -26,7 +27,7 @@ export async function POST(req: Request) {
     data: {
       name: body.name,
       description: body.description ?? null,
-      type: body.type,
+      type: mapEnum(productTypeMap, body.type, 'produto') as 'produto' | 'servico',
       category: body.category,
       unit: body.unit ?? 'único',
       active: body.active ?? true,

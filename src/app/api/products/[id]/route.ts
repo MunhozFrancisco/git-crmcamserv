@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
+import { productTypeMap, mapEnum } from '@/lib/enum-maps'
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const session = await getServerSession(authOptions)
@@ -17,7 +18,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     data: {
       name: body.name,
       description: body.description,
-      type: body.type,
+      type: body.type ? mapEnum(productTypeMap, body.type, 'produto') as 'produto' | 'servico' : undefined,
       category: body.category,
       unit: body.unit,
       active: body.active,

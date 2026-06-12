@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
+import { activityTypeMap, mapEnum } from '@/lib/enum-maps'
 
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const session = await getServerSession(authOptions)
@@ -28,7 +29,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     data: {
       opportunityId: id,
       userId: session.user.id,
-      type: body.type ?? 'tarefa',
+      type: mapEnum(activityTypeMap, body.type ?? 'tarefa', 'tarefa') as never,
       description: body.description,
     },
     include: { user: { select: { id: true, name: true, avatar: true } } },

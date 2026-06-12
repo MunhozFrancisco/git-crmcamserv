@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
+import { taskTypeMap, mapEnum } from '@/lib/enum-maps'
 
 export async function GET() {
   const session = await getServerSession(authOptions)
@@ -31,7 +32,7 @@ export async function POST(req: Request) {
   const task = await prisma.task.create({
     data: {
       title: body.title,
-      type: body.type ?? 'outro',
+      type: mapEnum(taskTypeMap, body.type ?? 'outro', 'outro') as never,
       priority: body.priority ?? 'media',
       dueDate: new Date(body.due_date),
       assignedTo: body.assigned_to ?? session.user.id,

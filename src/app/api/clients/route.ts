@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
+import { sourceMap, mapEnum } from '@/lib/enum-maps'
 
 export async function GET() {
   const session = await getServerSession(authOptions)
@@ -34,7 +35,7 @@ export async function POST(req: Request) {
       whatsapp: body.whatsapp ?? null,
       segment: body.segment ?? null,
       address: body.address ?? null,
-      source: body.source ?? 'outro',
+      source: mapEnum(sourceMap, body.source ?? 'outro', 'outro') as never,
       temperature: body.temperature ?? 'morno',
       clientType: body.client_type ?? 'privado',
       status: body.status ?? 'lead',
