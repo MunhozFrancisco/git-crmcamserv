@@ -1,7 +1,8 @@
 'use client'
 
+import Link from 'next/link'
 import { Draggable } from '@hello-pangea/dnd'
-import { Clock, DollarSign, AlertTriangle, TrendingUp, MoreVertical, Pencil, Trash2 } from 'lucide-react'
+import { Clock, DollarSign, AlertTriangle, TrendingUp, MoreVertical, Pencil, Trash2, History } from 'lucide-react'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import {
   DropdownMenu, DropdownMenuTrigger, DropdownMenuContent,
@@ -78,7 +79,14 @@ export function KanbanCard({ opportunity, index, onEdit, onDelete }: KanbanCardP
                         Editar
                       </DropdownMenuItem>
                     )}
-                    {onEdit && onDelete && <DropdownMenuSeparator />}
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem asChild>
+                      <Link href={`/oportunidades/${opportunity.id}`}>
+                        <History className="h-4 w-4 text-slate-500" />
+                        Ver Histórico
+                      </Link>
+                    </DropdownMenuItem>
+                    {onDelete && <DropdownMenuSeparator />}
                     {onDelete && (
                       <DropdownMenuItem
                         className="text-red-600 hover:bg-red-50 focus:bg-red-50"

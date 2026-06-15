@@ -227,16 +227,17 @@ export function Sidebar() {
             <button
               onClick={() => setSenhaOpen(true)}
               title="Alterar senha"
-              className="text-slate-400 hover:text-white transition-colors"
+              className="text-slate-400 hover:text-white transition-colors p-1 rounded"
             >
               <KeyRound className="h-4 w-4" />
             </button>
             <button
               onClick={handleLogout}
               title="Sair"
-              className="text-slate-400 hover:text-white transition-colors"
+              className="flex items-center gap-1.5 text-red-400 hover:text-red-300 hover:bg-slate-800 transition-colors px-2 py-1 rounded-lg text-xs font-medium"
             >
-              <LogOut className="h-4 w-4" />
+              <LogOut className="h-3.5 w-3.5" />
+              Sair
             </button>
           </div>
         </div>

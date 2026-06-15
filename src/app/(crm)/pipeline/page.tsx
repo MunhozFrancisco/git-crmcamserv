@@ -543,7 +543,6 @@ export default function PipelinePage() {
     .reduce((sum, o) => sum + o.value, 0)
 
   function handleSave(opp: Opportunity) {
-    const isNew = !editTarget
     setOpportunities((prev) => {
       const exists = prev.find((o) => o.id === opp.id)
       if (exists) return prev.map((o) => (o.id === opp.id ? opp : o))
@@ -551,9 +550,7 @@ export default function PipelinePage() {
     })
     setEditTarget(undefined)
     setDefaultStageId(undefined)
-    if (isNew) {
-      setInteracaoOppId(opp.id)
-    }
+    setInteracaoOppId(opp.id)
   }
 
   async function handleMove(oppId: string, newStageId: string) {

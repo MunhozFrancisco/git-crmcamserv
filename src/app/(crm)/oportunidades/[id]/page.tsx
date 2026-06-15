@@ -144,6 +144,7 @@ function NovaInteracaoInline({
   opportunityId: string
   onSave: (a: Activity) => void
 }) {
+  const [type, setType] = useState<Activity['type']>('ligação')
   const [interactionDate, setInteractionDate] = useState(new Date().toISOString().split('T')[0])
   const [description, setDescription] = useState('')
   const [saving, setSaving] = useState(false)
@@ -156,9 +157,12 @@ function NovaInteracaoInline({
       const res = await fetch(`/api/opportunities/${opportunityId}/activities`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ type: 'ligação', description, interaction_date: interactionDate }),
+        body: JSON.stringify({ type, description, interaction_date: interactionDate }),
       })
-      if (!res.ok) throw new Error()
+      if (!res.ok) {
+        const msg = await res.text()
+        throw new Error(msg)
+      }
       const saved = await res.json()
       onSave({
         id: saved.id,
@@ -171,8 +175,9 @@ function NovaInteracaoInline({
       })
       setDescription('')
       setInteractionDate(new Date().toISOString().split('T')[0])
-    } catch {
-      setError('Erro ao registrar interação.')
+      setType('ligação')
+    } catch (e) {
+      setError(`Erro ao registrar interação: ${(e as Error).message}`)
     } finally {
       setSaving(false)
     }
@@ -184,14 +189,29 @@ function NovaInteracaoInline({
         <CardTitle className="text-base">Registrar Contato com o Cliente</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div>
-          <Label className="mb-1.5 block text-sm font-medium text-slate-700">Data da Contato</Label>
-          <Input
-            type="date"
-            value={interactionDate}
-            onChange={e => setInteractionDate(e.target.value)}
-            className="max-w-48"
-          />
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <Label className="mb-1.5 block text-sm font-medium text-slate-700">Data do Contato</Label>
+            <Input
+              type="date"
+              value={interactionDate}
+              onChange={e => setInteractionDate(e.target.value)}
+            />
+          </div>
+          <div>
+            <Label className="mb-1.5 block text-sm font-medium text-slate-700">Tipo</Label>
+            <select
+              value={type}
+              onChange={e => setType(e.target.value as Activity['type'])}
+              className="w-full text-sm border border-slate-200 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            >
+              <option value="ligação">Ligação</option>
+              <option value="email">E-mail</option>
+              <option value="reunião">Reunião</option>
+              <option value="whatsapp">WhatsApp</option>
+              <option value="tarefa">Tarefa</option>
+            </select>
+          </div>
         </div>
         <div>
           <Label className="mb-1.5 block text-sm font-medium text-slate-700">Descrição do Contato</Label>
