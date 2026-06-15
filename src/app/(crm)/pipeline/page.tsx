@@ -261,8 +261,8 @@ function OportunidadeModal({
       if (!res.ok) throw new Error(await res.text())
       const saved = await res.json()
 
-      // Se em edição e o usuário preencheu descrição de interação, salva
-      if (isEdit && intDesc.trim()) {
+      // Se o usuário preencheu descrição de interação, salva
+      if (intDesc.trim()) {
         await fetch(`/api/opportunities/${saved.id}/activities`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -363,8 +363,7 @@ function OportunidadeModal({
             />
           </div>
 
-          {isEdit && (
-            <div className="border-t border-slate-100 pt-4 space-y-3">
+          <div className="border-t border-slate-100 pt-4 space-y-3">
               <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Nova Interação (opcional)</p>
               <div className="grid grid-cols-2 gap-3">
                 <div>
@@ -390,8 +389,7 @@ function OportunidadeModal({
                   rows={3}
                   className="w-full text-sm border border-slate-200 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none" />
               </div>
-            </div>
-          )}
+          </div>
 
           {error && <p className="text-sm text-red-600">{error}</p>}
         </div>
