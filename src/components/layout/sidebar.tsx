@@ -1,14 +1,110 @@
 'use client'
 
+import { useState } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import {
   LayoutDashboard, Kanban, CheckSquare,
-  BarChart3, Sparkles, LogOut, Building2, Package, Briefcase, Users,
+  BarChart3, Sparkles, LogOut, Building2, Package, Briefcase, Users, KeyRound, Loader2,
 } from 'lucide-react'
 import { cn, getInitials } from '@/lib/utils'
 import { useUser } from '@/contexts/user-context'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle,
+  DialogDescription, DialogFooter,
+} from '@/components/ui/dialog'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+
+function AlterarSenhaModal({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
+  const [currentPassword, setCurrentPassword] = useState('')
+  const [newPassword, setNewPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+  const [success, setSuccess] = useState(false)
+
+  function reset() {
+    setCurrentPassword(''); setNewPassword(''); setConfirmPassword('')
+    setError(''); setSuccess(false)
+  }
+
+  function handleClose(v: boolean) {
+    if (!v) reset()
+    onOpenChange(v)
+  }
+
+  async function handleSave() {
+    if (newPassword !== confirmPassword) {
+      setError('A nova senha e a confirmação não coincidem.')
+      return
+    }
+    if (newPassword.length < 6) {
+      setError('A nova senha deve ter ao menos 6 caracteres.')
+      return
+    }
+    setSaving(true); setError('')
+    try {
+      const res = await fetch('/api/users/me/password', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ current_password: currentPassword, new_password: newPassword }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error ?? 'Erro ao alterar senha')
+      setSuccess(true)
+      setTimeout(() => handleClose(false), 1500)
+    } catch (e) {
+      setError((e as Error).message)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={handleClose}>
+      <DialogContent className="max-w-sm">
+        <DialogHeader>
+          <DialogTitle>Alterar Senha</DialogTitle>
+          <DialogDescription>Informe sua senha atual e escolha uma nova.</DialogDescription>
+        </DialogHeader>
+        {success ? (
+          <p className="text-sm text-green-600 text-center py-2">Senha alterada com sucesso!</p>
+        ) : (
+          <div className="space-y-4">
+            <div>
+              <Label className="mb-1.5 block">Senha atual</Label>
+              <Input type="password" value={currentPassword}
+                onChange={e => setCurrentPassword(e.target.value)} placeholder="••••••" />
+            </div>
+            <div>
+              <Label className="mb-1.5 block">Nova senha</Label>
+              <Input type="password" value={newPassword}
+                onChange={e => setNewPassword(e.target.value)} placeholder="Mín. 6 caracteres" />
+            </div>
+            <div>
+              <Label className="mb-1.5 block">Confirmar nova senha</Label>
+              <Input type="password" value={confirmPassword}
+                onChange={e => setConfirmPassword(e.target.value)} placeholder="Repita a nova senha" />
+            </div>
+            {error && <p className="text-sm text-red-600">{error}</p>}
+          </div>
+        )}
+        <DialogFooter className="gap-2 mt-2">
+          <Button variant="outline" onClick={() => handleClose(false)} disabled={saving}>Cancelar</Button>
+          {!success && (
+            <Button onClick={handleSave} disabled={!currentPassword || !newPassword || saving}>
+              {saving && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+              Salvar
+            </Button>
+          )}
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+}
 
 const navItems = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -28,6 +124,7 @@ export function Sidebar() {
   const pathname = usePathname()
   const router = useRouter()
   const { currentUser, logout } = useUser()
+  const [senhaOpen, setSenhaOpen] = useState(false)
 
   function handleLogout() {
     logout()
@@ -126,15 +223,26 @@ export function Sidebar() {
             <p className="text-sm font-medium text-white truncate">{displayName}</p>
             <p className="text-xs text-slate-400 capitalize">{displayRole}</p>
           </div>
-          <button
-            onClick={handleLogout}
-            title="Sair"
-            className="text-slate-400 hover:text-white transition-colors"
-          >
-            <LogOut className="h-4 w-4" />
-          </button>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => setSenhaOpen(true)}
+              title="Alterar senha"
+              className="text-slate-400 hover:text-white transition-colors"
+            >
+              <KeyRound className="h-4 w-4" />
+            </button>
+            <button
+              onClick={handleLogout}
+              title="Sair"
+              className="text-slate-400 hover:text-white transition-colors"
+            >
+              <LogOut className="h-4 w-4" />
+            </button>
+          </div>
         </div>
       </div>
+
+      <AlterarSenhaModal open={senhaOpen} onOpenChange={setSenhaOpen} />
     </aside>
   )
 }

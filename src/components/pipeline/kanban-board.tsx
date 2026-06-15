@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { DragDropContext, Droppable, type DropResult } from '@hello-pangea/dnd'
 import { KanbanCard } from './kanban-card'
 import type { Opportunity, Stage } from '@/types'
@@ -17,10 +17,15 @@ interface KanbanBoardProps {
   onEdit?: (opp: Opportunity) => void
   onDelete?: (opp: Opportunity) => void
   onAddToStage?: (stageId: string) => void
+  onMove?: (oppId: string, newStageId: string) => void
 }
 
-export function KanbanBoard({ columns: initialColumns, onEdit, onDelete, onAddToStage }: KanbanBoardProps) {
+export function KanbanBoard({ columns: initialColumns, onEdit, onDelete, onAddToStage, onMove }: KanbanBoardProps) {
   const [columns, setColumns] = useState(initialColumns)
+
+  useEffect(() => {
+    setColumns(initialColumns)
+  }, [initialColumns])
 
   function onDragEnd(result: DropResult) {
     const { source, destination } = result
@@ -34,13 +39,13 @@ export function KanbanBoard({ columns: initialColumns, onEdit, onDelete, onAddTo
 
     const [movedCard] = newColumns[sourceColIdx].opportunities.splice(source.index, 1)
     movedCard.stage_id = destination.droppableId
-    movedCard.status =
-      destination.droppableId === 's5' ? 'ganha'
-      : destination.droppableId === 's6' ? 'perdida'
-      : 'aberta'
     newColumns[destColIdx].opportunities.splice(destination.index, 0, movedCard)
 
     setColumns(newColumns)
+
+    if (source.droppableId !== destination.droppableId) {
+      onMove?.(movedCard.id, destination.droppableId)
+    }
   }
 
   function handleEdit(opp: Opportunity) {
