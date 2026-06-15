@@ -138,12 +138,89 @@ function NovaInteracaoModal({
   )
 }
 
+function NovaInteracaoInline({
+  opportunityId, onSave,
+}: {
+  opportunityId: string
+  onSave: (a: Activity) => void
+}) {
+  const [interactionDate, setInteractionDate] = useState(new Date().toISOString().split('T')[0])
+  const [description, setDescription] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+
+  async function handleSave() {
+    if (!description.trim() || !interactionDate) return
+    setSaving(true); setError('')
+    try {
+      const res = await fetch(`/api/opportunities/${opportunityId}/activities`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: 'ligação', description, interaction_date: interactionDate }),
+      })
+      if (!res.ok) throw new Error()
+      const saved = await res.json()
+      onSave({
+        id: saved.id,
+        opportunity_id: saved.opportunityId,
+        user_id: saved.userId,
+        type: saved.type,
+        description: saved.description,
+        created_at: saved.interactionDate ?? saved.createdAt,
+        user: saved.user,
+      })
+      setDescription('')
+      setInteractionDate(new Date().toISOString().split('T')[0])
+    } catch {
+      setError('Erro ao registrar interação.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <Card className="border-indigo-200">
+      <CardHeader>
+        <CardTitle className="text-base">Registrar Contato com o Cliente</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div>
+          <Label className="mb-1.5 block text-sm font-medium text-slate-700">Data da Contato</Label>
+          <Input
+            type="date"
+            value={interactionDate}
+            onChange={e => setInteractionDate(e.target.value)}
+            className="max-w-48"
+          />
+        </div>
+        <div>
+          <Label className="mb-1.5 block text-sm font-medium text-slate-700">Descrição do Contato</Label>
+          <textarea
+            value={description}
+            onChange={e => setDescription(e.target.value)}
+            placeholder="Descreva o que foi falado, combinado com o cliente..."
+            rows={6}
+            className="w-full text-sm border border-slate-200 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
+          />
+        </div>
+        {error && <p className="text-sm text-red-600">{error}</p>}
+        <div className="flex justify-end">
+          <Button onClick={handleSave} disabled={!description.trim() || !interactionDate || saving}>
+            {saving && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+            <Plus className="h-4 w-4 mr-1.5" />
+            Salvar Interação
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
+
 export default function OportunidadePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
   const [opp, setOpp] = useState<OppDetail | null>(null)
   const [activities, setActivities] = useState<Activity[]>([])
   const [loading, setLoading] = useState(true)
-  const [modalOpen, setModalOpen] = useState(false)
   const [nextDate, setNextDate] = useState('')
   const [savingDate, setSavingDate] = useState(false)
 
@@ -325,16 +402,13 @@ export default function OportunidadePage({ params }: { params: Promise<{ id: str
           </Card>
         </div>
 
+        {/* Formulário de nova interação — sempre visível */}
+        <NovaInteracaoInline opportunityId={id} onSave={addActivity} />
+
         {/* Histórico de interações */}
         <Card>
           <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle>Histórico de Interações</CardTitle>
-              <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setModalOpen(true)}>
-                <Plus className="h-3.5 w-3.5" />
-                Registrar
-              </Button>
-            </div>
+            <CardTitle>Histórico de Interações</CardTitle>
           </CardHeader>
           <CardContent>
             {activities.length === 0 ? (
@@ -371,12 +445,6 @@ export default function OportunidadePage({ params }: { params: Promise<{ id: str
         </Card>
       </div>
 
-      <NovaInteracaoModal
-        open={modalOpen}
-        onOpenChange={setModalOpen}
-        opportunityId={id}
-        onSave={addActivity}
-      />
     </div>
   )
 }
