@@ -397,10 +397,13 @@ function InteracaoModal({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ type, description, interaction_date: interactionDate }),
       })
-      if (!res.ok) throw new Error()
+      if (!res.ok) {
+        const body = await res.text()
+        throw new Error(body || `HTTP ${res.status}`)
+      }
       onOpenChange(false)
-    } catch {
-      setError('Erro ao registrar interação.')
+    } catch (e) {
+      setError(`Erro: ${(e as Error).message}`)
     } finally {
       setSaving(false)
     }
@@ -532,9 +535,7 @@ export default function PipelinePage() {
 
   const columns = stages.map((stage) => ({
     stage,
-    opportunities: visibleOpps.filter(
-      (o) => o.stage_id === stage.id && o.status === 'aberta'
-    ),
+    opportunities: visibleOpps.filter((o) => o.stage_id === stage.id),
   }))
 
   const totalOpen = visibleOpps.filter((o) => o.status === 'aberta').length
