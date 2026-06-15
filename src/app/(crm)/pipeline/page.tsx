@@ -14,7 +14,7 @@ import {
 } from '@/components/ui/dialog'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import type { Opportunity, Stage, OpportunityStatus, RiskLevel } from '@/types'
-import { Plus, Filter, Search, Loader2 } from 'lucide-react'
+import { Plus, Filter, Search, Loader2, Phone, Mail, Video, MessageCircle, Clock } from 'lucide-react'
 
 // ─── Types ────────────────────────────────────────────────
 type ClientOption = { id: string; name: string }
@@ -365,6 +365,107 @@ function OportunidadeModal({
   )
 }
 
+// ─── Modal de Interação pós-criação ───────────────────────
+function InteracaoModal({
+  open, onOpenChange, opportunityId,
+}: {
+  open: boolean
+  onOpenChange: (v: boolean) => void
+  opportunityId: string
+}) {
+  const [type, setType] = useState('ligação')
+  const [interactionDate, setInteractionDate] = useState(new Date().toISOString().split('T')[0])
+  const [description, setDescription] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+    if (open) {
+      setType('ligação')
+      setInteractionDate(new Date().toISOString().split('T')[0])
+      setDescription('')
+      setError('')
+    }
+  }, [open])
+
+  async function handleSave() {
+    if (!description.trim()) return
+    setSaving(true); setError('')
+    try {
+      const res = await fetch(`/api/opportunities/${opportunityId}/activities`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type, description, interaction_date: interactionDate }),
+      })
+      if (!res.ok) throw new Error()
+      onOpenChange(false)
+    } catch {
+      setError('Erro ao registrar interação.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>Registrar Primeiro Contato</DialogTitle>
+          <DialogDescription>
+            Oportunidade criada! Registre o primeiro contato com o cliente.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4">
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label className="mb-1.5 block">Data do Contato *</Label>
+              <Input
+                type="date"
+                value={interactionDate}
+                onChange={e => setInteractionDate(e.target.value)}
+              />
+            </div>
+            <div>
+              <Label className="mb-1.5 block">Tipo</Label>
+              <select
+                value={type}
+                onChange={e => setType(e.target.value)}
+                className="w-full text-sm border border-slate-200 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              >
+                <option value="ligação">Ligação</option>
+                <option value="email">E-mail</option>
+                <option value="reunião">Reunião</option>
+                <option value="whatsapp">WhatsApp</option>
+                <option value="tarefa">Tarefa</option>
+              </select>
+            </div>
+          </div>
+          <div>
+            <Label className="mb-1.5 block">Descrição do Contato *</Label>
+            <textarea
+              value={description}
+              onChange={e => setDescription(e.target.value)}
+              placeholder="Descreva o que foi falado, combinado com o cliente..."
+              rows={5}
+              className="w-full text-sm border border-slate-200 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
+            />
+          </div>
+          {error && <p className="text-sm text-red-600">{error}</p>}
+        </div>
+        <DialogFooter className="gap-2 mt-2">
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
+            Pular
+          </Button>
+          <Button onClick={handleSave} disabled={!description.trim() || !interactionDate || saving}>
+            {saving && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+            Registrar
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
 // ─── Page ─────────────────────────────────────────────────
 export default function PipelinePage() {
   const { currentUser } = useUser()
@@ -382,6 +483,7 @@ export default function PipelinePage() {
   const [deleteTarget, setDeleteTarget] = useState<Opportunity | null>(null)
   const [deleting, setDeleting] = useState(false)
   const [filterUser, setFilterUser] = useState('')
+  const [interacaoOppId, setInteracaoOppId] = useState<string | null>(null)
 
   useEffect(() => {
     async function load() {
@@ -441,6 +543,7 @@ export default function PipelinePage() {
     .reduce((sum, o) => sum + o.value, 0)
 
   function handleSave(opp: Opportunity) {
+    const isNew = !editTarget
     setOpportunities((prev) => {
       const exists = prev.find((o) => o.id === opp.id)
       if (exists) return prev.map((o) => (o.id === opp.id ? opp : o))
@@ -448,6 +551,9 @@ export default function PipelinePage() {
     })
     setEditTarget(undefined)
     setDefaultStageId(undefined)
+    if (isNew) {
+      setInteracaoOppId(opp.id)
+    }
   }
 
   async function handleMove(oppId: string, newStageId: string) {
@@ -572,6 +678,14 @@ export default function PipelinePage() {
         onConfirm={() => deleteTarget && handleDelete(deleteTarget.id)}
         disabled={deleting}
       />
+
+      {interacaoOppId && (
+        <InteracaoModal
+          open={!!interacaoOppId}
+          onOpenChange={(v) => { if (!v) setInteracaoOppId(null) }}
+          opportunityId={interacaoOppId}
+        />
+      )}
     </div>
   )
 }

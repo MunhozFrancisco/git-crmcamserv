@@ -209,12 +209,13 @@ model Opportunity {
 }
 
 model Activity {
-  id            String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  opportunityId String       @map("opportunity_id") @db.Uuid
-  userId        String       @map("user_id") @db.Uuid
-  type          ActivityType
-  description   String
-  createdAt     DateTime     @default(now()) @map("created_at")
+  id              String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  opportunityId   String       @map("opportunity_id") @db.Uuid
+  userId          String       @map("user_id") @db.Uuid
+  type            ActivityType
+  description     String
+  interactionDate DateTime?    @map("interaction_date") @db.Date
+  createdAt       DateTime     @default(now()) @map("created_at")
 
   opportunity Opportunity @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
   user        User        @relation(fields: [userId], references: [id])

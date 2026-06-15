@@ -46,12 +46,18 @@ function NovaInteracaoModal({
   opportunityId: string; onSave: (a: Activity) => void
 }) {
   const [type, setType] = useState<Activity['type']>('ligação')
+  const [interactionDate, setInteractionDate] = useState(new Date().toISOString().split('T')[0])
   const [description, setDescription] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
 
   useEffect(() => {
-    if (open) { setType('ligação'); setDescription(''); setError('') }
+    if (open) {
+      setType('ligação')
+      setInteractionDate(new Date().toISOString().split('T')[0])
+      setDescription('')
+      setError('')
+    }
   }, [open])
 
   async function handleSave() {
@@ -61,7 +67,7 @@ function NovaInteracaoModal({
       const res = await fetch(`/api/opportunities/${opportunityId}/activities`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ type, description }),
+        body: JSON.stringify({ type, description, interaction_date: interactionDate }),
       })
       if (!res.ok) throw new Error()
       const saved = await res.json()
@@ -71,7 +77,7 @@ function NovaInteracaoModal({
         user_id: saved.userId,
         type: saved.type,
         description: saved.description,
-        created_at: saved.createdAt,
+        created_at: saved.interactionDate ?? saved.createdAt,
         user: saved.user,
       })
       onOpenChange(false)
@@ -90,29 +96,39 @@ function NovaInteracaoModal({
           <DialogDescription>Documente o contato realizado com o cliente.</DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
-          <div>
-            <Label className="mb-1.5 block">Tipo</Label>
-            <select value={type} onChange={e => setType(e.target.value as Activity['type'])}
-              className="w-full text-sm border border-slate-200 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
-              <option value="ligação">Ligação</option>
-              <option value="email">E-mail</option>
-              <option value="reunião">Reunião</option>
-              <option value="whatsapp">WhatsApp</option>
-              <option value="tarefa">Tarefa</option>
-            </select>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label className="mb-1.5 block">Data do Contato *</Label>
+              <Input
+                type="date"
+                value={interactionDate}
+                onChange={e => setInteractionDate(e.target.value)}
+              />
+            </div>
+            <div>
+              <Label className="mb-1.5 block">Tipo</Label>
+              <select value={type} onChange={e => setType(e.target.value as Activity['type'])}
+                className="w-full text-sm border border-slate-200 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                <option value="ligação">Ligação</option>
+                <option value="email">E-mail</option>
+                <option value="reunião">Reunião</option>
+                <option value="whatsapp">WhatsApp</option>
+                <option value="tarefa">Tarefa</option>
+              </select>
+            </div>
           </div>
           <div>
-            <Label className="mb-1.5 block">Descrição *</Label>
+            <Label className="mb-1.5 block">Descrição do Contato *</Label>
             <textarea value={description} onChange={e => setDescription(e.target.value)}
-              placeholder="Descreva o contato realizado..."
-              rows={4}
+              placeholder="Descreva o que foi falado, combinado com o cliente..."
+              rows={5}
               className="w-full text-sm border border-slate-200 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none" />
           </div>
           {error && <p className="text-sm text-red-600">{error}</p>}
         </div>
         <DialogFooter className="gap-2 mt-2">
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>Cancelar</Button>
-          <Button onClick={handleSave} disabled={!description.trim() || saving}>
+          <Button onClick={handleSave} disabled={!description.trim() || !interactionDate || saving}>
             {saving && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
             Registrar
           </Button>
@@ -164,7 +180,7 @@ export default function OportunidadePage({ params }: { params: Promise<{ id: str
           user_id: a.userId ?? a.user_id,
           type: a.type,
           description: a.description,
-          created_at: a.createdAt ?? a.created_at,
+          created_at: a.interactionDate ?? a.createdAt ?? a.created_at,
           user: a.user,
         })))
       }
