@@ -97,7 +97,7 @@ function TarefaModal({
     : opportunities
 
   async function handleSave() {
-    if (!form.title || !form.due_date) return
+    if (!form.title || !form.due_date || !form.opportunity_id) return
     setSaving(true); setError('')
     try {
       const url = isEdit ? `/api/tasks/${initial!.id}` : '/api/tasks'
@@ -198,30 +198,36 @@ function TarefaModal({
           </div>
 
           {/* Vínculo com cliente */}
-          <div className="p-3 rounded-lg border border-indigo-100 bg-indigo-50 space-y-3">
+          <div className="p-3 rounded-lg border border-indigo-200 bg-indigo-50 space-y-3">
             <p className="text-xs font-semibold text-indigo-700 flex items-center gap-1.5">
-              <Building2 className="h-3.5 w-3.5" /> Vincular a Cliente / Oportunidade
+              <Building2 className="h-3.5 w-3.5" /> Vincular a Oportunidade <span className="text-red-500">*</span>
             </p>
             <div>
-              <Label className="mb-1.5 block text-xs">Cliente</Label>
+              <Label className="mb-1.5 block text-xs">Filtrar por cliente</Label>
               <select value={form.client_id}
                 onChange={e => { field('client_id', e.target.value); field('opportunity_id', '') }}
                 className="w-full text-sm border border-slate-200 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                <option value="">Nenhum</option>
+                <option value="">Todos os clientes</option>
                 {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
             </div>
             <div>
-              <Label className="mb-1.5 block text-xs">Oportunidade</Label>
+              <Label className="mb-1.5 block text-xs">Oportunidade *</Label>
               <select value={form.opportunity_id} onChange={e => field('opportunity_id', e.target.value)}
-                className="w-full text-sm border border-slate-200 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                <option value="">Nenhuma</option>
+                className={cn(
+                  'w-full text-sm border rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500',
+                  !form.opportunity_id ? 'border-red-300' : 'border-slate-200'
+                )}>
+                <option value="">Selecionar oportunidade...</option>
                 {filteredOpps.map(o => (
                   <option key={o.id} value={o.id}>
                     {o.client?.name ?? clients.find(c => c.id === o.clientId)?.name ?? o.id.slice(0, 8)}
                   </option>
                 ))}
               </select>
+              {!form.opportunity_id && (
+                <p className="text-xs text-red-500 mt-1">Toda tarefa deve estar vinculada a uma oportunidade.</p>
+              )}
             </div>
           </div>
 
@@ -230,7 +236,7 @@ function TarefaModal({
 
         <DialogFooter className="gap-2 mt-2">
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>Cancelar</Button>
-          <Button onClick={handleSave} disabled={!form.title || !form.due_date || saving}>
+          <Button onClick={handleSave} disabled={!form.title || !form.due_date || !form.opportunity_id || saving}>
             {saving && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
             {isEdit ? 'Salvar Alterações' : 'Criar Tarefa'}
           </Button>
