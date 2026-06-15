@@ -214,7 +214,6 @@ model Activity {
   userId          String       @map("user_id") @db.Uuid
   type            ActivityType
   description     String
-  interactionDate DateTime?    @map("interaction_date") @db.Date
   createdAt       DateTime     @default(now()) @map("created_at")
 
   opportunity Opportunity @relation(fields: [opportunityId], references: [id], onDelete: Cascade)

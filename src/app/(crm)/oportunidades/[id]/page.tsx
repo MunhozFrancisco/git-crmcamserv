@@ -77,7 +77,7 @@ function NovaInteracaoModal({
         user_id: saved.userId,
         type: saved.type,
         description: saved.description,
-        created_at: saved.interactionDate ?? saved.createdAt,
+        created_at: saved.createdAt,
         user: saved.user,
       })
       onOpenChange(false)
@@ -170,7 +170,7 @@ function NovaInteracaoInline({
         user_id: saved.userId,
         type: saved.type,
         description: saved.description,
-        created_at: saved.interactionDate ?? saved.createdAt,
+        created_at: saved.createdAt,
         user: saved.user,
       })
       setDescription('')
@@ -277,7 +277,7 @@ export default function OportunidadePage({ params }: { params: Promise<{ id: str
           user_id: a.userId ?? a.user_id,
           type: a.type,
           description: a.description,
-          created_at: a.interactionDate ?? a.createdAt ?? a.created_at,
+          created_at: a.createdAt ?? a.created_at,
           user: a.user,
         })))
       }

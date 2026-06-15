@@ -32,7 +32,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         userId: session.user.id,
         type: mapEnum(activityTypeMap, body.type ?? 'tarefa', 'tarefa') as never,
         description: body.description,
-        interactionDate: body.interaction_date ? new Date(body.interaction_date) : new Date(),
+        createdAt: body.interaction_date ? new Date(body.interaction_date) : new Date(),
       },
       include: { user: { select: { id: true, name: true, avatar: true } } },
     })
