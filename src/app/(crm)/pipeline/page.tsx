@@ -209,10 +209,18 @@ function OportunidadeModal({
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
 
+  // Interação inline (só no modo edição)
+  const [intType, setIntType] = useState('ligação')
+  const [intDate, setIntDate] = useState(new Date().toISOString().split('T')[0])
+  const [intDesc, setIntDesc] = useState('')
+
   useEffect(() => {
     if (open) {
       setForm(defaultForm())
       setError('')
+      setIntType('ligação')
+      setIntDate(new Date().toISOString().split('T')[0])
+      setIntDesc('')
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, initial?.id])
@@ -252,6 +260,16 @@ function OportunidadeModal({
 
       if (!res.ok) throw new Error(await res.text())
       const saved = await res.json()
+
+      // Se em edição e o usuário preencheu descrição de interação, salva
+      if (isEdit && intDesc.trim()) {
+        await fetch(`/api/opportunities/${saved.id}/activities`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ type: intType, description: intDesc, interaction_date: intDate }),
+        })
+      }
+
       onSave(mapOpp(saved))
       onOpenChange(false)
     } catch {
@@ -344,6 +362,36 @@ function OportunidadeModal({
               onChange={(e) => field('expected_close_date', e.target.value)}
             />
           </div>
+
+          {isEdit && (
+            <div className="border-t border-slate-100 pt-4 space-y-3">
+              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Nova Interação (opcional)</p>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label className="mb-1.5 block">Data do Contato</Label>
+                  <Input type="date" value={intDate} onChange={e => setIntDate(e.target.value)} />
+                </div>
+                <div>
+                  <Label className="mb-1.5 block">Tipo</Label>
+                  <select value={intType} onChange={e => setIntType(e.target.value)}
+                    className="w-full text-sm border border-slate-200 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    <option value="ligação">Ligação</option>
+                    <option value="email">E-mail</option>
+                    <option value="reunião">Reunião</option>
+                    <option value="whatsapp">WhatsApp</option>
+                    <option value="tarefa">Tarefa</option>
+                  </select>
+                </div>
+              </div>
+              <div>
+                <Label className="mb-1.5 block">Descrição do Contato</Label>
+                <textarea value={intDesc} onChange={e => setIntDesc(e.target.value)}
+                  placeholder="Deixe em branco para não registrar interação..."
+                  rows={3}
+                  className="w-full text-sm border border-slate-200 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none" />
+              </div>
+            </div>
+          )}
 
           {error && <p className="text-sm text-red-600">{error}</p>}
         </div>
@@ -486,7 +534,6 @@ export default function PipelinePage() {
   const [deleteTarget, setDeleteTarget] = useState<Opportunity | null>(null)
   const [deleting, setDeleting] = useState(false)
   const [filterUser, setFilterUser] = useState('')
-  const [interacaoOppId, setInteracaoOppId] = useState<string | null>(null)
 
   useEffect(() => {
     async function load() {
@@ -551,7 +598,6 @@ export default function PipelinePage() {
     })
     setEditTarget(undefined)
     setDefaultStageId(undefined)
-    setInteracaoOppId(opp.id)
   }
 
   async function handleMove(oppId: string, newStageId: string) {
@@ -677,13 +723,6 @@ export default function PipelinePage() {
         disabled={deleting}
       />
 
-      {interacaoOppId && (
-        <InteracaoModal
-          open={!!interacaoOppId}
-          onOpenChange={(v) => { if (!v) setInteracaoOppId(null) }}
-          opportunityId={interacaoOppId}
-        />
-      )}
     </div>
   )
 }
