@@ -33,5 +33,5 @@ export const productTypeMap: Record<string, string> = {
 }
 
 export function mapEnum(map: Record<string, string>, value: string, fallback: string): string {
-  return map[value] ?? map[fallback] ?? fallback
+  return map[value.toLowerCase()] ?? map[fallback.toLowerCase()] ?? fallback
 }

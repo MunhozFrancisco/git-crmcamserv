@@ -25,21 +25,26 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const { id } = await params
   const body = await req.json()
 
-  const activity = await prisma.activity.create({
-    data: {
-      opportunityId: id,
-      userId: session.user.id,
-      type: mapEnum(activityTypeMap, body.type ?? 'tarefa', 'tarefa') as never,
-      description: body.description,
-      interactionDate: body.interaction_date ? new Date(body.interaction_date) : new Date(),
-    },
-    include: { user: { select: { id: true, name: true, avatar: true } } },
-  })
+  try {
+    const activity = await prisma.activity.create({
+      data: {
+        opportunityId: id,
+        userId: session.user.id,
+        type: mapEnum(activityTypeMap, body.type ?? 'tarefa', 'tarefa') as never,
+        description: body.description,
+        interactionDate: body.interaction_date ? new Date(body.interaction_date) : new Date(),
+      },
+      include: { user: { select: { id: true, name: true, avatar: true } } },
+    })
 
-  await prisma.opportunity.update({
-    where: { id },
-    data: { lastInteraction: new Date() },
-  })
+    await prisma.opportunity.update({
+      where: { id },
+      data: { lastInteraction: new Date() },
+    })
 
-  return NextResponse.json(activity, { status: 201 })
+    return NextResponse.json(activity, { status: 201 })
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e)
+    return NextResponse.json({ error: msg }, { status: 500 })
+  }
 }
