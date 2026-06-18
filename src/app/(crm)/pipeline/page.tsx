@@ -13,15 +13,17 @@ import {
   DialogDescription, DialogFooter,
 } from '@/components/ui/dialog'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
-import type { Opportunity, Stage, OpportunityStatus, RiskLevel } from '@/types'
+import type { Opportunity, Stage, OpportunityStatus, RiskLevel, ProductType } from '@/types'
 import { Plus, Filter, Search, Loader2, Phone, Mail, Video, MessageCircle, Clock } from 'lucide-react'
 
 // ─── Types ────────────────────────────────────────────────
 type ClientOption = { id: string; name: string }
 type UserOption = { id: string; name: string; role: string }
+type ProductOption = { id: string; name: string; type: string }
 
 type OppForm = {
   client_id: string
+  product_id: string
   value: string
   stage_id: string
   assigned_to: string
@@ -35,11 +37,14 @@ function mapOpp(data: Record<string, unknown>): Opportunity {
   const stage = data.stage as Record<string, unknown> | undefined
   const assignee = data.assignee as { id: string; name: string } | undefined
 
+  const product = data.product as { id: string; name: string; type: string } | undefined
+
   return {
     id: data.id as string,
     client_id: (data.clientId ?? '') as string,
     lead_id: '',
     stage_id: (data.stageId ?? '') as string,
+    product_id: (data.productId ?? '') as string,
     value: Number(data.value),
     status: data.status as OpportunityStatus,
     assigned_to: (data.assignedTo ?? '') as string,
@@ -69,6 +74,7 @@ function mapOpp(data: Record<string, unknown>): Opportunity {
       name: assignee?.name ?? '—',
       email: '', role: 'vendedor', meta: 0,
     },
+    product: product ? { ...product, type: product.type as ProductType } : undefined,
     // stage não faz parte do tipo Opportunity mas é incluído para uso interno
     ...(stage ? {
       _stage: {
@@ -179,7 +185,7 @@ function ClientCombobox({
 // ─── Modal de Oportunidade ────────────────────────────────
 function OportunidadeModal({
   open, onOpenChange, initial, defaultStageId,
-  stages, clients, users, currentUserId, isGestor, onSave,
+  stages, clients, users, products, currentUserId, isGestor, onSave,
 }: {
   open: boolean
   onOpenChange: (v: boolean) => void
@@ -188,6 +194,7 @@ function OportunidadeModal({
   stages: Stage[]
   clients: ClientOption[]
   users: UserOption[]
+  products: ProductOption[]
   currentUserId: string
   isGestor: boolean
   onSave: (opp: Opportunity) => void
@@ -197,6 +204,7 @@ function OportunidadeModal({
 
   const defaultForm = (): OppForm => ({
     client_id: initial?.client_id ?? '',
+    product_id: initial?.product_id ?? '',
     value: initial?.value != null ? String(initial.value) : '',
     stage_id: initial?.stage_id ?? defaultStageId ?? stages[0]?.id ?? '',
     assigned_to: initial?.assigned_to
@@ -240,6 +248,7 @@ function OportunidadeModal({
 
       const payload = {
         client_id: form.client_id,
+        product_id: form.product_id || null,
         stage_id: form.stage_id,
         value: parseFloat(form.value),
         status,
@@ -299,6 +308,28 @@ function OportunidadeModal({
               value={form.client_id}
               onChange={(id) => field('client_id', id)}
             />
+          </div>
+
+          <div>
+            <Label className="mb-1.5 block">Produto / Serviço</Label>
+            <select
+              value={form.product_id}
+              onChange={(e) => field('product_id', e.target.value)}
+              className="w-full text-sm border border-slate-200 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            >
+              <option value="">Nenhum</option>
+              {['produto', 'serviço'].map((tipo) => {
+                const group = products.filter((p) => p.type === tipo)
+                if (!group.length) return null
+                return (
+                  <optgroup key={tipo} label={tipo === 'produto' ? 'Produtos' : 'Serviços'}>
+                    {group.map((p) => (
+                      <option key={p.id} value={p.id}>{p.name}</option>
+                    ))}
+                  </optgroup>
+                )
+              })}
+            </select>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
@@ -524,6 +555,7 @@ export default function PipelinePage() {
   const [opportunities, setOpportunities] = useState<Opportunity[]>([])
   const [clients, setClients] = useState<ClientOption[]>([])
   const [users, setUsers] = useState<UserOption[]>([])
+  const [products, setProducts] = useState<ProductOption[]>([])
   const [loading, setLoading] = useState(true)
 
   const [modalOpen, setModalOpen] = useState(false)
@@ -532,16 +564,18 @@ export default function PipelinePage() {
   const [deleteTarget, setDeleteTarget] = useState<Opportunity | null>(null)
   const [deleting, setDeleting] = useState(false)
   const [filterUser, setFilterUser] = useState('')
+  const [filterProduct, setFilterProduct] = useState('')
 
   useEffect(() => {
     async function load() {
       setLoading(true)
       try {
-        const [stagesRes, oppsRes, clientsRes, usersRes] = await Promise.all([
+        const [stagesRes, oppsRes, clientsRes, usersRes, productsRes] = await Promise.all([
           fetch('/api/stages'),
           fetch('/api/opportunities'),
           fetch('/api/clients'),
           fetch('/api/users'),
+          fetch('/api/products'),
         ])
         if (stagesRes.ok) {
           const data = await stagesRes.json()
@@ -567,6 +601,14 @@ export default function PipelinePage() {
               }))
           )
         }
+        if (productsRes.ok) {
+          const data = await productsRes.json()
+          setProducts(
+            data
+              .filter((p: Record<string, unknown>) => p.active !== false)
+              .map((p: Record<string, unknown>) => ({ id: p.id, name: p.name, type: p.type }))
+          )
+        }
       } finally {
         setLoading(false)
       }
@@ -574,9 +616,9 @@ export default function PipelinePage() {
     load()
   }, [])
 
-  const visibleOpps = filterUser
-    ? opportunities.filter((o) => o.assigned_to === filterUser)
-    : opportunities
+  const visibleOpps = opportunities
+    .filter((o) => !filterUser || o.assigned_to === filterUser)
+    .filter((o) => !filterProduct || o.product_id === filterProduct)
 
   const columns = stages.map((stage) => ({
     stage,
@@ -656,7 +698,7 @@ export default function PipelinePage() {
       />
 
       <div className="flex flex-wrap items-center justify-between gap-2 px-4 lg:px-6 py-3 border-b border-slate-200 bg-white">
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {isGestor && vendedores.length > 0 && (
             <>
               <Button variant="outline" size="sm" className="gap-1.5">
@@ -674,6 +716,26 @@ export default function PipelinePage() {
                 ))}
               </select>
             </>
+          )}
+          {products.length > 0 && (
+            <select
+              value={filterProduct}
+              onChange={(e) => setFilterProduct(e.target.value)}
+              className="text-xs border border-slate-200 rounded-lg px-3 py-1.5 bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            >
+              <option value="">Todos os produtos</option>
+              {['produto', 'serviço'].map((tipo) => {
+                const group = products.filter((p) => p.type === tipo)
+                if (!group.length) return null
+                return (
+                  <optgroup key={tipo} label={tipo === 'produto' ? 'Produtos' : 'Serviços'}>
+                    {group.map((p) => (
+                      <option key={p.id} value={p.id}>{p.name}</option>
+                    ))}
+                  </optgroup>
+                )
+              })}
+            </select>
           )}
           {!isGestor && (
             <p className="text-xs text-slate-500 bg-indigo-50 border border-indigo-100 rounded-lg px-3 py-1.5">
@@ -706,6 +768,7 @@ export default function PipelinePage() {
           stages={stages}
           clients={clients}
           users={users}
+          products={products}
           currentUserId={currentUser.id}
           isGestor={isGestor}
           onSave={handleSave}

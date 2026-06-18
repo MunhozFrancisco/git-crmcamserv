@@ -187,6 +187,7 @@ model Opportunity {
   id                String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   clientId          String            @map("client_id") @db.Uuid
   stageId           String            @map("stage_id") @db.Uuid
+  productId         String?           @map("product_id") @db.Uuid
   value             Decimal           @default(0) @db.Decimal(12, 2)
   status            OpportunityStatus @default(aberta)
   assignedTo        String            @map("assigned_to") @db.Uuid
@@ -201,6 +202,7 @@ model Opportunity {
   client     Client     @relation(fields: [clientId], references: [id])
   stage      Stage      @relation(fields: [stageId], references: [id])
   assignee   User       @relation(fields: [assignedTo], references: [id])
+  product    Product?   @relation(fields: [productId], references: [id], onDelete: SetNull)
   activities Activity[]
   tasks      Task[]
   alerts     Alert[]
@@ -253,6 +255,8 @@ model Product {
   active      Boolean         @default(true)
   createdAt   DateTime        @default(now()) @map("created_at")
   updatedAt   DateTime        @updatedAt @map("updated_at")
+
+  opportunities Opportunity[]
 
   @@map("products")
 }

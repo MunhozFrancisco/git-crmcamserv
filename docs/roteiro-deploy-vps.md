@@ -95,9 +95,12 @@ Abrir `http://<IP_DA_VPS>` em aba anônima (evita cache).
 - [ ] Cadastrar vendedor
 - [ ] Cadastrar cliente (testar campo "origem": indicação, cold-call etc.)
 - [ ] Cadastrar produto (tipo: serviço, produto)
-- [ ] Criar oportunidade e mover no kanban
+- [ ] Criar oportunidade **selecionando um produto/serviço** e mover no kanban
+- [ ] Confirmar que o badge do produto aparece no card do kanban
+- [ ] Filtrar o pipeline pelo produto cadastrado
 - [ ] Registrar atividade na oportunidade
 - [ ] Criar tarefa vinculada a cliente/oportunidade
+- [ ] Editar tarefa → preencher "Registrar Conversa" → abrir a oportunidade e confirmar que a interação aparece no histórico
 - [ ] Verificar dashboard (cards de KPI, ranking de vendedores para gestor)
 - [ ] Clicar no sino de notificações
 - [ ] Acessar página de Contatos

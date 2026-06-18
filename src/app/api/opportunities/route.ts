@@ -15,6 +15,7 @@ export async function GET() {
       client: { select: { id: true, name: true } },
       stage: true,
       assignee: { select: { id: true, name: true } },
+      product: { select: { id: true, name: true, type: true } },
     },
     orderBy: { createdAt: 'desc' },
   })
@@ -36,6 +37,7 @@ export async function POST(req: Request) {
     data: {
       clientId: body.client_id,
       stageId,
+      productId: body.product_id || null,
       value: body.value ?? 0,
       status: isWon ? 'ganha' : isLost ? 'perdida' : 'aberta',
       assignedTo: body.assigned_to ?? session.user.id,
@@ -48,6 +50,7 @@ export async function POST(req: Request) {
       client: { select: { id: true, name: true } },
       stage: true,
       assignee: { select: { id: true, name: true } },
+      product: { select: { id: true, name: true, type: true } },
     },
   })
 

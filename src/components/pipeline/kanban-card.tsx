@@ -102,6 +102,15 @@ export function KanbanCard({ opportunity, index, onEdit, onDelete }: KanbanCardP
             </div>
           </div>
 
+          {/* Produto / Serviço */}
+          {opportunity.product && (
+            <div className="mb-2">
+              <span className="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium bg-indigo-50 text-indigo-600 border border-indigo-100">
+                {opportunity.product.name}
+              </span>
+            </div>
+          )}
+
           {/* Valor */}
           <div className="flex items-center gap-1 mb-2.5">
             <DollarSign className="h-3.5 w-3.5 text-slate-400" />

@@ -14,6 +14,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
       client: { select: { id: true, name: true } },
       stage: true,
       assignee: { select: { id: true, name: true } },
+      product: { select: { id: true, name: true, type: true } },
     },
   })
 
@@ -44,6 +45,9 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   if (body.next_interaction_date !== undefined) {
     data.nextInteractionDate = body.next_interaction_date ? new Date(body.next_interaction_date) : null
   }
+  if (body.product_id !== undefined) {
+    data.productId = body.product_id || null
+  }
 
   const opportunity = await prisma.opportunity.update({
     where: { id },
@@ -52,6 +56,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       client: { select: { id: true, name: true } },
       stage: true,
       assignee: { select: { id: true, name: true } },
+      product: { select: { id: true, name: true, type: true } },
     },
   })
 

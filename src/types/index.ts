@@ -54,6 +54,7 @@ export interface Opportunity {
   client_id: string
   lead_id: string
   stage_id: string
+  product_id?: string
   value: number
   status: OpportunityStatus
   assigned_to: string
@@ -66,6 +67,7 @@ export interface Opportunity {
   client?: Client
   lead: Lead
   assignee: User
+  product?: { id: string; name: string; type: ProductType }
 }
 
 export interface Activity {

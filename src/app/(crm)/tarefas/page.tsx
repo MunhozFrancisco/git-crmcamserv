@@ -75,6 +75,10 @@ function TarefaModal({
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
 
+  const [intType, setIntType] = useState('ligação')
+  const [intDate, setIntDate] = useState(new Date().toISOString().split('T')[0])
+  const [intDesc, setIntDesc] = useState('')
+
   useEffect(() => {
     if (open) {
       setForm({
@@ -87,6 +91,9 @@ function TarefaModal({
         assigned_to: initial?.assigned_to ?? (isGestor ? (users[0]?.id ?? currentUserId) : currentUserId),
       })
       setError('')
+      setIntType('ligação')
+      setIntDate(new Date().toISOString().split('T')[0])
+      setIntDesc('')
     }
   }, [open, initial, isGestor, users, currentUserId])
 
@@ -117,6 +124,16 @@ function TarefaModal({
       })
       if (!res.ok) throw new Error()
       const saved = await res.json()
+
+      if (intDesc.trim() && (form.opportunity_id || saved.opportunityId)) {
+        const oppId = form.opportunity_id || saved.opportunityId
+        await fetch(`/api/opportunities/${oppId}/activities`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ type: intType, description: intDesc, interaction_date: intDate }),
+        })
+      }
+
       onSave({
         id: saved.id,
         title: saved.title,
@@ -230,6 +247,37 @@ function TarefaModal({
               )}
             </div>
           </div>
+
+          {form.opportunity_id && (
+            <div className="border-t border-slate-100 pt-4 space-y-3">
+              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide flex items-center gap-1.5">
+                <MessageCircle className="h-3.5 w-3.5" /> Registrar Conversa (opcional)
+              </p>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label className="mb-1.5 block text-xs">Data</Label>
+                  <Input type="date" value={intDate} onChange={e => setIntDate(e.target.value)} />
+                </div>
+                <div>
+                  <Label className="mb-1.5 block text-xs">Tipo</Label>
+                  <select value={intType} onChange={e => setIntType(e.target.value)}
+                    className="w-full text-sm border border-slate-200 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    <option value="ligação">Ligação</option>
+                    <option value="email">E-mail</option>
+                    <option value="reunião">Reunião</option>
+                    <option value="whatsapp">WhatsApp</option>
+                  </select>
+                </div>
+              </div>
+              <div>
+                <Label className="mb-1.5 block text-xs">Descrição da conversa</Label>
+                <textarea value={intDesc} onChange={e => setIntDesc(e.target.value)}
+                  placeholder="Deixe em branco para não registrar interação..."
+                  rows={3}
+                  className="w-full text-sm border border-slate-200 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none" />
+              </div>
+            </div>
+          )}
 
           {error && <p className="text-sm text-red-600">{error}</p>}
         </div>
