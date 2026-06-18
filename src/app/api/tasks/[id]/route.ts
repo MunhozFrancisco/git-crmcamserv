@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
+import { taskTypeMap, mapEnum } from '@/lib/enum-maps'
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const session = await getServerSession(authOptions)
@@ -12,7 +13,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 
   const data: Record<string, unknown> = {}
   if (body.title !== undefined) data.title = body.title
-  if (body.type !== undefined) data.type = body.type
+  if (body.type !== undefined) data.type = mapEnum(taskTypeMap, body.type, 'outro')
   if (body.priority !== undefined) data.priority = body.priority
   if (body.due_date !== undefined) data.dueDate = new Date(body.due_date)
   if (body.assigned_to !== undefined) data.assignedTo = body.assigned_to
