@@ -156,11 +156,16 @@ model Client {
   createdAt       DateTime     @default(now()) @map("created_at")
   updatedAt       DateTime     @updatedAt @map("updated_at")
 
-  // Relações
+  // Relações CRM
   assignee      User          @relation(fields: [assignedTo], references: [id])
   contacts      Contact[]
   opportunities Opportunity[]
   tasks         Task[]
+
+  // Relações IA
+  canais        ClienteCanal[]
+  ordensServico OrdemServico[]
+  interacoes    Interacao[]
 
   @@map("clients")
 }
@@ -273,4 +278,106 @@ model Alert {
   opportunity Opportunity @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
 
   @@map("alerts")
+}
+
+// ── Enums IA ─────────────────────────────────────────────────
+
+enum Canal {
+  whatsapp
+  telegram
+  hermes
+}
+
+enum Urgencia {
+  alta
+  media
+  baixa
+}
+
+enum IntencaoTriagem {
+  abertura_os
+  reclamacao
+  duvida
+  cancelamento
+  outro
+}
+
+enum StatusOS {
+  aberta
+  em_andamento
+  encerrada
+}
+
+enum AgenteNome {
+  triagem
+  crm
+  monitor
+  copiloto
+  notificacao
+  melhoria
+}
+
+// ── Modelos IA ────────────────────────────────────────────────
+
+model ClienteCanal {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  clientId  String   @map("client_id") @db.Uuid
+  canal     Canal
+  canalId   String   @map("canal_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  client Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@unique([canal, canalId])
+  @@map("cliente_canais")
+}
+
+model OrdemServico {
+  id           String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  clientId     String          @map("client_id") @db.Uuid
+  canal        Canal
+  descricao    String
+  intencao     IntencaoTriagem
+  urgencia     Urgencia        @default(media)
+  status       StatusOS        @default(aberta)
+  escalaHumano Boolean         @default(false) @map("escala_humano")
+  resolvidaEm  DateTime?       @map("resolvida_em")
+  createdAt    DateTime        @default(now()) @map("created_at")
+  updatedAt    DateTime        @updatedAt @map("updated_at")
+
+  client     Client      @relation(fields: [clientId], references: [id])
+  interacoes Interacao[]
+
+  @@map("ordens_servico")
+}
+
+model Interacao {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  clientId    String   @map("client_id") @db.Uuid
+  osId        String?  @map("os_id") @db.Uuid
+  canal       Canal
+  direcao     String
+  mensagem    String
+  geradoPorIa Boolean  @default(false) @map("gerado_por_ia")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  client       Client        @relation(fields: [clientId], references: [id])
+  ordemServico OrdemServico? @relation(fields: [osId], references: [id], onDelete: SetNull)
+
+  @@index([clientId])
+  @@map("interacoes")
+}
+
+model LogAgente {
+  id        String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  agente    AgenteNome
+  acao      String
+  input     Json
+  output    Json
+  sucesso   Boolean    @default(true)
+  erroMsg   String?    @map("erro_msg")
+  createdAt DateTime   @default(now()) @map("created_at")
+
+  @@index([createdAt])
+  @@map("log_agentes")
 }
