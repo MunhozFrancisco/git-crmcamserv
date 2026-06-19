@@ -7,6 +7,7 @@ declare module 'next-auth' {
       role: string
       meta: string
       avatar?: string
+      tenantId: string
     } & DefaultSession['user']
   }
 }
@@ -17,5 +18,6 @@ declare module 'next-auth/jwt' {
     role: string
     meta: string
     avatar?: string
+    tenantId: string
   }
 }

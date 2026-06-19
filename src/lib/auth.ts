@@ -30,6 +30,7 @@ export const authOptions: NextAuthOptions = {
           role: user.role,
           meta: user.meta.toString(),
           avatar: user.avatar ?? undefined,
+          tenantId: user.tenantId,
         }
       },
     }),
@@ -37,11 +38,12 @@ export const authOptions: NextAuthOptions = {
   callbacks: {
     async jwt({ token, user }) {
       if (user) {
-        const u = user as unknown as { id: string; role: string; meta: string; avatar?: string }
+        const u = user as unknown as { id: string; role: string; meta: string; avatar?: string; tenantId: string }
         token.id = u.id
         token.role = u.role
         token.meta = u.meta
         token.avatar = u.avatar
+        token.tenantId = u.tenantId
       }
       return token
     },
@@ -50,6 +52,7 @@ export const authOptions: NextAuthOptions = {
       session.user.role = token.role as string
       session.user.meta = token.meta as string
       session.user.avatar = token.avatar as string | undefined
+      session.user.tenantId = token.tenantId as string
       return session
     },
   },
