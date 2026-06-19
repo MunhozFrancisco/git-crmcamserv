@@ -18,11 +18,15 @@ datasource db {
 enum UserRole {
   gestor
   vendedor
+
+  @@map("user_role")
 }
 
 enum ClientStatus {
   lead
   cliente
+
+  @@map("client_status")
 }
 
 enum ClientSource {
@@ -32,24 +36,32 @@ enum ClientSource {
   evento
   cold_call   @map("cold-call")
   outro
+
+  @@map("client_source")
 }
 
 enum Temperature {
   frio
   morno
   quente
+
+  @@map("temperature")
 }
 
 enum OpportunityStatus {
   aberta
   ganha
   perdida
+
+  @@map("opportunity_status")
 }
 
 enum RiskLevel {
   baixo
   medio
   alto
+
+  @@map("risk_level")
 }
 
 enum ActivityType {
@@ -58,12 +70,16 @@ enum ActivityType {
   reuniao   @map("reunião")
   whatsapp
   tarefa
+
+  @@map("activity_type")
 }
 
 enum TaskPriority {
   baixa
   media
   alta
+
+  @@map("task_priority")
 }
 
 enum TaskType {
@@ -72,11 +88,15 @@ enum TaskType {
   reuniao   @map("reunião")
   whatsapp
   outro
+
+  @@map("task_type")
 }
 
 enum ProductType {
   produto
   servico   @map("serviço")
+
+  @@map("product_type")
 }
 
 enum ProductCategory {
@@ -87,17 +107,23 @@ enum ProductCategory {
   Treinamento
   Infraestrutura
   Outro
+
+  @@map("product_category")
 }
 
 enum AlertType {
   warning
   danger
   info
+
+  @@map("alert_type")
 }
 
 enum ClientType {
   privado
   governo
+
+  @@map("client_type")
 }
 
 // ── Models ───────────────────────────────────────────────────
