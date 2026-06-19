@@ -154,3 +154,18 @@ docs/
 - Spec de agentes → `docs/AGENTS.md`
 - Briefing detalhado → `docs/CONTEXTO.md`
 - Decisões arquiteturais → `docs/DECISOES.md`
+
+---
+
+## Leitura obrigatória antes de qualquer tarefa
+
+Antes de escrever qualquer código, leia os seguintes arquivos nesta ordem:
+1. `docs/AGENTS.md` — spec completa dos agentes
+2. `.agents/skills/triagem.md` — se a tarefa envolve triagem ou webhooks
+3. `.agents/skills/crm.md` — se a tarefa envolve banco ou ordens de serviço
+4. `.agents/skills/monitor.md` — se a tarefa envolve KPIs ou dashboard
+5. `.agents/skills/copiloto.md` — se a tarefa envolve sugestão de respostas
+6. `.agents/skills/notificacao.md` — se a tarefa envolve envio de mensagens
+7. `.agents/skills/melhoria.md` — se a tarefa envolve relatórios ou análise
+
+Confirme a leitura antes de propor qualquer implementação.
