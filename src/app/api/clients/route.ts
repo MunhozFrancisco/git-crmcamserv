@@ -25,8 +25,12 @@ export async function POST(req: Request) {
 
   const body = await req.json()
 
+  const tenant = await prisma.tenant.findFirst({ where: { slug: 'camserv' } })
+  if (!tenant) return NextResponse.json({ error: 'Tenant não encontrado' }, { status: 500 })
+
   const client = await prisma.client.create({
     data: {
+      tenantId: tenant.id,
       name: body.name,
       razaoSocial: body.razao_social ?? null,
       cnpj: body.cnpj ?? null,

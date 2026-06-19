@@ -30,8 +30,12 @@ export async function POST(req: Request) {
 
   const passwordHash = await bcrypt.hash(body.password, 10)
 
+  const tenant = await prisma.tenant.findFirst({ where: { slug: 'camserv' } })
+  if (!tenant) return NextResponse.json({ error: 'Tenant não encontrado' }, { status: 500 })
+
   const user = await prisma.user.create({
     data: {
+      tenantId: tenant.id,
       name: body.name,
       email: body.email,
       passwordHash,
