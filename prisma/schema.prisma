@@ -126,10 +126,41 @@ enum ClientType {
   @@map("client_type")
 }
 
+enum PlanType {
+  starter
+  essential
+  growth
+  full
+
+  @@map("plan_type")
+}
+
 // ── Models ───────────────────────────────────────────────────
+
+model Tenant {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  cnpj      String   @unique @db.VarChar(14)
+  name      String
+  slug      String   @unique
+  planType  PlanType @default(starter) @map("plan_type")
+  modules   String[] @default([]) @map("modules")
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  users         User[]
+  clients       Client[]
+  clienteCanais ClienteCanal[]
+  ordensServico OrdemServico[]
+  interacoes    Interacao[]
+  logAgentes    LogAgente[]
+
+  @@map("tenants")
+}
 
 model User {
   id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId     String   @map("tenant_id") @db.Uuid
   name         String
   email        String   @unique
   passwordHash String   @map("password_hash")
@@ -140,12 +171,13 @@ model User {
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt @map("updated_at")
 
-  // Relações
+  tenant        Tenant        @relation(fields: [tenantId], references: [id])
   clients       Client[]
   opportunities Opportunity[]
   activities    Activity[]
   tasks         Task[]
 
+  @@index([tenantId])
   @@map("users")
 }
 
@@ -165,6 +197,7 @@ model Stage {
 
 model Client {
   id              String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId        String       @map("tenant_id") @db.Uuid
   status          ClientStatus @default(lead)
   name            String
   razaoSocial     String?      @map("razao_social")
@@ -182,17 +215,17 @@ model Client {
   createdAt       DateTime     @default(now()) @map("created_at")
   updatedAt       DateTime     @updatedAt @map("updated_at")
 
-  // Relações CRM
-  assignee      User          @relation(fields: [assignedTo], references: [id])
+  tenant        Tenant         @relation(fields: [tenantId], references: [id])
+  assignee      User           @relation(fields: [assignedTo], references: [id])
   contacts      Contact[]
   opportunities Opportunity[]
   tasks         Task[]
-
-  // Relações IA
   canais        ClienteCanal[]
   ordensServico OrdemServico[]
   interacoes    Interacao[]
 
+  @@index([tenantId])
+  @@index([tenantId, status])
   @@map("clients")
 }
 
@@ -215,20 +248,20 @@ model Contact {
 }
 
 model Opportunity {
-  id                String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  clientId          String            @map("client_id") @db.Uuid
-  stageId           String            @map("stage_id") @db.Uuid
-  productId         String?           @map("product_id") @db.Uuid
-  value             Decimal           @default(0) @db.Decimal(12, 2)
-  status            OpportunityStatus @default(aberta)
-  assignedTo        String            @map("assigned_to") @db.Uuid
-  score             Int               @default(50)
-  riskLevel         RiskLevel         @default(medio) @map("risk_level")
-  expectedCloseDate     DateTime? @map("expected_close_date") @db.Date
-  nextInteractionDate   DateTime? @map("next_interaction_date") @db.Date
-  lastInteraction       DateTime  @default(now()) @map("last_interaction") @db.Date
-  createdAt         DateTime          @default(now()) @map("created_at")
-  updatedAt         DateTime          @updatedAt @map("updated_at")
+  id                  String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  clientId            String            @map("client_id") @db.Uuid
+  stageId             String            @map("stage_id") @db.Uuid
+  productId           String?           @map("product_id") @db.Uuid
+  value               Decimal           @default(0) @db.Decimal(12, 2)
+  status              OpportunityStatus @default(aberta)
+  assignedTo          String            @map("assigned_to") @db.Uuid
+  score               Int               @default(50)
+  riskLevel           RiskLevel         @default(medio) @map("risk_level")
+  expectedCloseDate   DateTime?         @map("expected_close_date") @db.Date
+  nextInteractionDate DateTime?         @map("next_interaction_date") @db.Date
+  lastInteraction     DateTime          @default(now()) @map("last_interaction") @db.Date
+  createdAt           DateTime          @default(now()) @map("created_at")
+  updatedAt           DateTime          @updatedAt @map("updated_at")
 
   client     Client     @relation(fields: [clientId], references: [id])
   stage      Stage      @relation(fields: [stageId], references: [id])
@@ -242,12 +275,12 @@ model Opportunity {
 }
 
 model Activity {
-  id              String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  opportunityId   String       @map("opportunity_id") @db.Uuid
-  userId          String       @map("user_id") @db.Uuid
-  type            ActivityType
-  description     String
-  createdAt       DateTime     @default(now()) @map("created_at")
+  id            String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  opportunityId String       @map("opportunity_id") @db.Uuid
+  userId        String       @map("user_id") @db.Uuid
+  type          ActivityType
+  description   String
+  createdAt     DateTime     @default(now()) @map("created_at")
 
   opportunity Opportunity @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
   user        User        @relation(fields: [userId], references: [id])
@@ -347,19 +380,23 @@ enum AgenteNome {
 
 model ClienteCanal {
   id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId  String   @map("tenant_id") @db.Uuid
   clientId  String   @map("client_id") @db.Uuid
   canal     Canal
   canalId   String   @map("canal_id")
   createdAt DateTime @default(now()) @map("created_at")
 
+  tenant Tenant @relation(fields: [tenantId], references: [id])
   client Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
 
   @@unique([canal, canalId])
+  @@index([tenantId])
   @@map("cliente_canais")
 }
 
 model OrdemServico {
   id           String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId     String          @map("tenant_id") @db.Uuid
   clientId     String          @map("client_id") @db.Uuid
   canal        Canal
   descricao    String
@@ -371,14 +408,18 @@ model OrdemServico {
   createdAt    DateTime        @default(now()) @map("created_at")
   updatedAt    DateTime        @updatedAt @map("updated_at")
 
+  tenant     Tenant      @relation(fields: [tenantId], references: [id])
   client     Client      @relation(fields: [clientId], references: [id])
   interacoes Interacao[]
 
+  @@index([tenantId])
+  @@index([tenantId, status])
   @@map("ordens_servico")
 }
 
 model Interacao {
   id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId    String   @map("tenant_id") @db.Uuid
   clientId    String   @map("client_id") @db.Uuid
   osId        String?  @map("os_id") @db.Uuid
   canal       Canal
@@ -387,15 +428,18 @@ model Interacao {
   geradoPorIa Boolean  @default(false) @map("gerado_por_ia")
   createdAt   DateTime @default(now()) @map("created_at")
 
+  tenant       Tenant        @relation(fields: [tenantId], references: [id])
   client       Client        @relation(fields: [clientId], references: [id])
   ordemServico OrdemServico? @relation(fields: [osId], references: [id], onDelete: SetNull)
 
+  @@index([tenantId])
   @@index([clientId])
   @@map("interacoes")
 }
 
 model LogAgente {
   id        String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId  String     @map("tenant_id") @db.Uuid
   agente    AgenteNome
   acao      String
   input     Json
@@ -404,6 +448,9 @@ model LogAgente {
   erroMsg   String?    @map("erro_msg")
   createdAt DateTime   @default(now()) @map("created_at")
 
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId])
   @@index([createdAt])
   @@map("log_agentes")
 }

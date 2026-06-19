@@ -132,11 +132,28 @@ docs/
 
 ## Próximos passos (em ordem)
 
-1. Redesenhar `prisma/schema.prisma` com schemas por módulo e suporte aos três canais
-2. Criar system prompt do Agente Triagem em `.agents/skills/triagem.md`
-3. Criar `src/app/api/webhooks/whatsapp/route.ts`
-4. Integrar `ANTHROPIC_API_KEY` e testar primeira chamada Claude API
-5. Criar `src/app/api/agentes/triagem/route.ts`
+### Fase 1 — concluída ✅
+1. ✅ Redesenhar `prisma/schema.prisma` — 4 novas tabelas IA + enums
+2. ✅ Criar system prompt do Agente Triagem em `.agents/skills/triagem.md`
+3. ✅ Integrar `ANTHROPIC_API_KEY` e testar primeira chamada Claude API
+4. ✅ Criar `src/app/api/agentes/triagem/route.ts`
+5. ✅ Criar `src/app/api/agentes/crm/route.ts`
+6. ✅ Criar `src/app/api/webhooks/telegram/route.ts` — testado e funcionando em produção
+
+### Fase 2 — em andamento
+7. Criar system prompt do Agente Copiloto em `.agents/skills/copiloto.md`
+8. Criar `src/app/api/agentes/copiloto/route.ts` — streaming com `ReadableStream`
+9. Criar componente UI `src/components/copiloto/SugestaoResposta.tsx`
+10. Criar system prompt do Agente Notificação em `.agents/skills/notificacao.md`
+11. Criar `src/app/api/agentes/notificacao/route.ts`
+12. Criar system prompt do Agente Melhoria em `.agents/skills/melhoria.md`
+13. Criar `scripts/melhoria.ts` — job semanal automático
+14. Criar `src/app/api/webhooks/whatsapp/route.ts` — após adquirir plano Meta
+
+### Infraestrutura pendente
+- Trocar `ANTHROPIC_API_KEY` e `TELEGRAM_BOT_TOKEN` no deploy definitivo
+- Configurar domínio com SSL para substituir IP direto
+- Sincronizar `DATABASE_URL` local com IP `172.16.2.12` (banco Supabase na VPS)
 
 ---
 
