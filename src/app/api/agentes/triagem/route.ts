@@ -26,9 +26,12 @@ export async function POST(req: NextRequest) {
 
     const texto = response.content[0].type === "text" ? response.content[0].text : "";
 
+    // Remove bloco markdown se Claude envolver o JSON em ```json ... ```
+    const limpo = texto.replace(/^```(?:json)?\s*/i, "").replace(/\s*```\s*$/i, "").trim();
+
     let json: unknown;
     try {
-      json = JSON.parse(texto);
+      json = JSON.parse(limpo);
     } catch {
       return NextResponse.json(
         { error: "Triagem retornou resposta inválida", raw: texto },
