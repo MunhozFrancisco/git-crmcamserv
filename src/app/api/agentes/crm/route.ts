@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { prisma } from "@/lib/db";
 import { Canal, IntencaoTriagem, Urgencia } from "@prisma/client";
 
 interface JsonTriagem {
@@ -25,7 +25,7 @@ export async function POST(req: NextRequest) {
     if (!json) throw new Error("Body vazio");
 
     // 1. Resolver ou criar cliente pelo canal_id
-    let clienteCanal = await db.clienteCanal.findUnique({
+    let clienteCanal = await prisma.clienteCanal.findUnique({
       where: { canal_canalId: { canal: json.canal, canalId: json.canal_id } },
       include: { client: true },
     });
@@ -35,10 +35,10 @@ export async function POST(req: NextRequest) {
       const nome = json.dados_extraidos.nome ?? `Contato ${json.canal} ${json.canal_id}`;
 
       // Buscar o primeiro gestor para atribuir o cliente
-      const gestor = await db.user.findFirst({ where: { role: "gestor" } });
+      const gestor = await prisma.user.findFirst({ where: { role: "gestor" } });
       if (!gestor) throw new Error("Nenhum gestor encontrado para atribuir cliente");
 
-      const novoCliente = await db.client.create({
+      const novoCliente = await prisma.client.create({
         data: {
           name: nome,
           phone: json.dados_extraidos.telefone ?? undefined,
@@ -46,7 +46,7 @@ export async function POST(req: NextRequest) {
         },
       });
 
-      clienteCanal = await db.clienteCanal.create({
+      clienteCanal = await prisma.clienteCanal.create({
         data: { clientId: novoCliente.id, canal: json.canal, canalId: json.canal_id },
         include: { client: true },
       });
@@ -55,7 +55,7 @@ export async function POST(req: NextRequest) {
     const clienteId = clienteCanal.clientId;
 
     // 2. Criar Ordem de Serviço
-    const os = await db.ordemServico.create({
+    const os = await prisma.ordemServico.create({
       data: {
         clientId: clienteId,
         canal: json.canal,
@@ -66,7 +66,7 @@ export async function POST(req: NextRequest) {
     });
 
     // 3. Registrar interação de entrada
-    await db.interacao.create({
+    await prisma.interacao.create({
       data: {
         clientId: clienteId,
         osId: os.id,
@@ -78,7 +78,7 @@ export async function POST(req: NextRequest) {
     });
 
     // 4. Log do agente
-    await db.logAgente.create({
+    await prisma.logAgente.create({
       data: {
         agente: "crm",
         acao: "processar_mensagem",
@@ -94,7 +94,7 @@ export async function POST(req: NextRequest) {
 
     // Registrar falha no log
     if (json) {
-      await db.logAgente.create({
+      await prisma.logAgente.create({
         data: {
           agente: "crm",
           acao: "processar_mensagem",
