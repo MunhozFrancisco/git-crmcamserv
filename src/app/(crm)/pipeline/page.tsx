@@ -565,6 +565,7 @@ export default function PipelinePage() {
   const [deleting, setDeleting] = useState(false)
   const [filterUser, setFilterUser] = useState('')
   const [filterProduct, setFilterProduct] = useState('')
+  const [filterProductType, setFilterProductType] = useState('')
 
   useEffect(() => {
     async function load() {
@@ -619,6 +620,7 @@ export default function PipelinePage() {
   const visibleOpps = opportunities
     .filter((o) => !filterUser || o.assigned_to === filterUser)
     .filter((o) => !filterProduct || o.product_id === filterProduct)
+    .filter((o) => !filterProductType || o.product?.type === filterProductType)
 
   const columns = stages.map((stage) => ({
     stage,
@@ -718,24 +720,35 @@ export default function PipelinePage() {
             </>
           )}
           {products.length > 0 && (
-            <select
-              value={filterProduct}
-              onChange={(e) => setFilterProduct(e.target.value)}
-              className="text-xs border border-slate-200 rounded-lg px-3 py-1.5 bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            >
-              <option value="">Todos os produtos</option>
-              {['produto', 'serviço'].map((tipo) => {
-                const group = products.filter((p) => p.type === tipo)
-                if (!group.length) return null
-                return (
-                  <optgroup key={tipo} label={tipo === 'produto' ? 'Produtos' : 'Serviços'}>
-                    {group.map((p) => (
-                      <option key={p.id} value={p.id}>{p.name}</option>
-                    ))}
-                  </optgroup>
-                )
-              })}
-            </select>
+            <>
+              <select
+                value={filterProductType}
+                onChange={(e) => { setFilterProductType(e.target.value); setFilterProduct('') }}
+                className="text-xs border border-slate-200 rounded-lg px-3 py-1.5 bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              >
+                <option value="">Produto ou Serviço</option>
+                <option value="produto">Produtos</option>
+                <option value="serviço">Serviços</option>
+              </select>
+              <select
+                value={filterProduct}
+                onChange={(e) => { setFilterProduct(e.target.value); setFilterProductType('') }}
+                className="text-xs border border-slate-200 rounded-lg px-3 py-1.5 bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              >
+                <option value="">Todos os produtos</option>
+                {['produto', 'serviço'].map((tipo) => {
+                  const group = products.filter((p) => p.type === tipo)
+                  if (!group.length) return null
+                  return (
+                    <optgroup key={tipo} label={tipo === 'produto' ? 'Produtos' : 'Serviços'}>
+                      {group.map((p) => (
+                        <option key={p.id} value={p.id}>{p.name}</option>
+                      ))}
+                    </optgroup>
+                  )
+                })}
+              </select>
+            </>
           )}
           {!isGestor && (
             <p className="text-xs text-slate-500 bg-indigo-50 border border-indigo-100 rounded-lg px-3 py-1.5">
