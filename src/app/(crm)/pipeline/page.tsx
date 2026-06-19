@@ -318,7 +318,7 @@ function OportunidadeModal({
               className="w-full text-sm border border-slate-200 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
             >
               <option value="">Nenhum</option>
-              {['produto', 'serviço'].map((tipo) => {
+              {['produto', 'servico'].map((tipo) => {
                 const group = products.filter((p) => p.type === tipo)
                 if (!group.length) return null
                 return (
@@ -728,7 +728,7 @@ export default function PipelinePage() {
               >
                 <option value="">Produto ou Serviço</option>
                 <option value="produto">Produtos</option>
-                <option value="serviço">Serviços</option>
+                <option value="servico">Serviços</option>
               </select>
               <select
                 value={filterProduct}
@@ -736,7 +736,7 @@ export default function PipelinePage() {
                 className="text-xs border border-slate-200 rounded-lg px-3 py-1.5 bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
               >
                 <option value="">Todos os produtos</option>
-                {['produto', 'serviço'].map((tipo) => {
+                {['produto', 'servico'].map((tipo) => {
                   const group = products.filter((p) => p.type === tipo)
                   if (!group.length) return null
                   return (
