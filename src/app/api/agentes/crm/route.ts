@@ -38,8 +38,12 @@ export async function POST(req: NextRequest) {
       const gestor = await prisma.user.findFirst({ where: { role: "gestor" } });
       if (!gestor) throw new Error("Nenhum gestor encontrado para atribuir cliente");
 
+      const tenant = await prisma.tenant.findFirst({ where: { slug: "camserv" } });
+      if (!tenant) throw new Error("Tenant padrão não encontrado");
+
       const novoCliente = await prisma.client.create({
         data: {
+          tenantId: tenant.id,
           name: nome,
           phone: json.dados_extraidos.telefone ?? undefined,
           assignedTo: gestor.id,
@@ -47,16 +51,18 @@ export async function POST(req: NextRequest) {
       });
 
       clienteCanal = await prisma.clienteCanal.create({
-        data: { clientId: novoCliente.id, canal: json.canal, canalId: json.canal_id },
+        data: { tenantId: tenant.id, clientId: novoCliente.id, canal: json.canal, canalId: json.canal_id },
         include: { client: true },
       });
     }
 
     const clienteId = clienteCanal.clientId;
+    const tenantId = clienteCanal.tenantId;
 
     // 2. Criar Ordem de Serviço
     const os = await prisma.ordemServico.create({
       data: {
+        tenantId,
         clientId: clienteId,
         canal: json.canal,
         descricao: json.dados_extraidos.problema_descrito,
@@ -68,6 +74,7 @@ export async function POST(req: NextRequest) {
     // 3. Registrar interação de entrada
     await prisma.interacao.create({
       data: {
+        tenantId,
         clientId: clienteId,
         osId: os.id,
         canal: json.canal,
@@ -80,6 +87,7 @@ export async function POST(req: NextRequest) {
     // 4. Log do agente
     await prisma.logAgente.create({
       data: {
+        tenantId,
         agente: "crm",
         acao: "processar_mensagem",
         input: json as object,
@@ -94,16 +102,20 @@ export async function POST(req: NextRequest) {
 
     // Registrar falha no log
     if (json) {
-      await prisma.logAgente.create({
-        data: {
-          agente: "crm",
-          acao: "processar_mensagem",
-          input: json as object,
-          output: { erro: String(err) },
-          sucesso: false,
-          erroMsg: String(err),
-        },
-      });
+      const tenant = await prisma.tenant.findFirst({ where: { slug: "camserv" } });
+      if (tenant) {
+        await prisma.logAgente.create({
+          data: {
+            tenantId: tenant.id,
+            agente: "crm",
+            acao: "processar_mensagem",
+            input: json as object,
+            output: { erro: String(err) },
+            sucesso: false,
+            erroMsg: String(err),
+          },
+        });
+      }
     }
 
     return NextResponse.json({ error: "Erro interno do Agente CRM" }, { status: 500 });
