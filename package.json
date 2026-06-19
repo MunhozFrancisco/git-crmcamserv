@@ -9,6 +9,7 @@
     "lint": "tsc --noEmit --pretty false"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.105.0",
     "@hello-pangea/dnd": "^16.6.0",
     "@prisma/client": "^5.22.0",
     "@radix-ui/react-avatar": "^1.1.0",
