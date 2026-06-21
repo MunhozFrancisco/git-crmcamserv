@@ -149,7 +149,15 @@ docs/
 12. Criar system prompt do Agente Melhoria em `.agents/skills/melhoria.md`
 13. Criar `scripts/melhoria.ts` — job semanal automático
 
-### Fase 3 — WhatsApp (aguarda plano Meta)
+### Fase 3 — Monitor + WhatsApp (próxima)
+#### Agente Monitor (não depende do plano Meta — prioridade)
+- Criar system prompt em `.agents/skills/monitor.md`
+- Criar `src/app/api/agentes/monitor/route.ts`
+- Criar dashboard de KPIs em `src/app/(crm)/dashboard/` — OS abertas, tempo médio, taxa resolução
+- Criar alertas proativos — notifica gestor quando métrica sai do padrão
+- Criar `scripts/monitor.ts` — job periódico de análise
+
+#### WhatsApp (aguarda plano Meta)
 - Criar `src/app/api/webhooks/whatsapp/route.ts`
 - Criar `src/lib/canais/whatsapp.ts`
 - Variáveis: `WHATSAPP_TOKEN` · `WHATSAPP_PHONE_ID`
