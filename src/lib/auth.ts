@@ -61,4 +61,13 @@ export const authOptions: NextAuthOptions = {
   },
   session: { strategy: 'jwt' },
   secret: process.env.NEXTAUTH_SECRET,
+  // Remove secure cookie flag when running over HTTP (no SSL yet)
+  ...(process.env.NEXTAUTH_URL?.startsWith('http://') && {
+    cookies: {
+      sessionToken: {
+        name: 'next-auth.session-token',
+        options: { httpOnly: true, sameSite: 'lax', path: '/', secure: false },
+      },
+    },
+  }),
 }
