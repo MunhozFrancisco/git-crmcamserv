@@ -8,8 +8,9 @@ import { SugestaoResposta } from '@/components/copiloto/SugestaoResposta'
 export default async function CopilotoOSPage({
   params,
 }: {
-  params: { osId: string }
+  params: Promise<{ osId: string }>
 }) {
+  const { osId } = await params
   const session = await getServerSession(authOptions)
   if (!session) return notFound()
 
@@ -17,7 +18,7 @@ export default async function CopilotoOSPage({
   if (!temModulo) redirect('/dashboard')
 
   const os = await prisma.ordemServico.findUnique({
-    where: { id: params.osId },
+    where: { id: osId },
     include: {
       client: { select: { name: true } },
       interacoes: {
