@@ -100,12 +100,12 @@ DATABASE_URL · NEXTAUTH_URL · NEXTAUTH_SECRET · NODE_ENV · PORT
 ### A adicionar por fase
 ```
 ANTHROPIC_API_KEY          # fase 1
-WHATSAPP_TOKEN             # fase 2
-WHATSAPP_PHONE_ID          # fase 2
 TELEGRAM_BOT_TOKEN         # fase 2
-HERMES_API_KEY             # fase 3
-HERMES_WEBHOOK_SECRET      # fase 3
-ASAAS_API_KEY              # fase 3
+WHATSAPP_TOKEN             # fase 3 — aguarda plano Meta
+WHATSAPP_PHONE_ID          # fase 3 — aguarda plano Meta
+HERMES_API_KEY             # fase 4 — após validação com clientes reais
+HERMES_WEBHOOK_SECRET      # fase 4 — após validação com clientes reais
+ASAAS_API_KEY              # fase 4
 ```
 
 ---
@@ -140,15 +140,24 @@ docs/
 5. ✅ Criar `src/app/api/agentes/crm/route.ts`
 6. ✅ Criar `src/app/api/webhooks/telegram/route.ts` — testado e funcionando em produção
 
-### Fase 2 — em andamento
-7. Criar system prompt do Agente Copiloto em `.agents/skills/copiloto.md`
-8. Criar `src/app/api/agentes/copiloto/route.ts` — streaming com `ReadableStream`
-9. Criar componente UI `src/components/copiloto/SugestaoResposta.tsx`
-10. Criar system prompt do Agente Notificação em `.agents/skills/notificacao.md`
-11. Criar `src/app/api/agentes/notificacao/route.ts`
+### Fase 2 — Telegram completo (foco atual)
+7. ✅ Criar system prompt do Agente Copiloto em `.agents/skills/copiloto.md`
+8. ✅ Criar `src/app/api/agentes/copiloto/route.ts` — streaming com `ReadableStream`
+9. ✅ Criar componente UI `src/components/copiloto/SugestaoResposta.tsx`
+10. ✅ Criar system prompt do Agente Notificação em `.agents/skills/notificacao.md`
+11. ✅ Criar `src/app/api/agentes/notificacao/route.ts`
 12. Criar system prompt do Agente Melhoria em `.agents/skills/melhoria.md`
 13. Criar `scripts/melhoria.ts` — job semanal automático
-14. Criar `src/app/api/webhooks/whatsapp/route.ts` — após adquirir plano Meta
+
+### Fase 3 — WhatsApp (aguarda plano Meta)
+- Criar `src/app/api/webhooks/whatsapp/route.ts`
+- Criar `src/lib/canais/whatsapp.ts`
+- Variáveis: `WHATSAPP_TOKEN` · `WHATSAPP_PHONE_ID`
+
+### Fase 4 — Hermes (após validação com clientes reais)
+- Criar `src/app/api/webhooks/hermes/route.ts`
+- Criar `src/lib/canais/hermes.ts`
+- Variáveis: `HERMES_API_KEY` · `HERMES_WEBHOOK_SECRET`
 
 ### Infraestrutura pendente
 - Trocar `ANTHROPIC_API_KEY` e `TELEGRAM_BOT_TOKEN` no deploy definitivo
