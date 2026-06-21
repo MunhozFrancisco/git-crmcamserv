@@ -1,65 +1,99 @@
 # Roteiro de Deploy — CRM Camserv (VPS Hostinger)
 
-## Contexto da infraestrutura
+## Mapa do ambiente (atualizado 2026-06-21)
 
 | Componente | Detalhe |
 |---|---|
-| VPS | Hostinger, Ubuntu |
-| Banco | PostgreSQL 16 gerenciado pelo Easypanel |
-| Easypanel | Ocupa porta 3000; Traefik roda como Docker Swarm service |
-| App | Container Docker, porta **3001** |
-| Proxy | Nginx na porta 80 → 3001 |
-| Repositório | https://github.com/MunhozFrancisco/git-crmcamserv |
+| VPS | Hostinger · Ubuntu 24.04 · IP `72.61.78.176` |
+| App | Container `camserv-crm` · porta **3001** · `network_mode: host` |
+| Banco | Container `supabase_supabase-db-1` · PostgreSQL 15 · porta **5432** |
+| Banco host | `172.16.2.12:5432` (IP interno da VPS acessível pelo app) |
+| Banco usuário | `camserv_app` / senha `Camserv2026` |
+| Banco nome | `camserv_crm` |
+| Nginx | Porta 443 SSL → proxy `localhost:3001` |
+| Easypanel | Container `easypanel` · porta **3000** (não usar para o app) |
 | Deploy dir | `/var/www/camserv-crm` |
+| Repo | https://github.com/MunhozFrancisco/git-crmcamserv |
 
 ---
 
-## Pré-requisitos (feito uma vez)
+## Containers relevantes
 
-- [ ] Docker instalado (`apt install docker.io docker-compose-plugin`)
-- [ ] Nginx instalado e configurado (`/etc/nginx/sites-enabled/camserv`)
-- [ ] Banco criado no Easypanel com role `camserv_app`
-- [ ] Schema aplicado: `psql -U camserv_app -d camserv_crm < database/schema.sql`
-- [ ] Migrations aplicadas: `psql ... < database/migrations/*.sql`
-- [ ] Arquivo `.env` criado em `/var/www/camserv-crm/.env`
-- [ ] Senha do usuário gestor atualizada no banco (hash bcrypt real)
+| Nome | Função |
+|---|---|
+| `camserv-crm` | App Next.js (nosso) |
+| `supabase_supabase-db-1` | PostgreSQL 15 |
+| `easypanel.1.*` | Painel de gestão (porta 3000 — não conflitar) |
+| demais `supabase_*` | Infraestrutura Supabase (não mexer) |
+
+---
+
+## .env da VPS (`/var/www/camserv-crm/.env`)
+
+```env
+DATABASE_URL="postgresql://camserv_app:Camserv2026@172.16.2.12:5432/camserv_crm?schema=public"
+NEXTAUTH_URL="http://72.61.78.176"
+NEXTAUTH_SECRET="8KOj3ihVlsJqy8WughCR6Qq7N9tQZClm3aGcpTVNq+g="
+NODE_ENV=production
+PORT=3001
+ANTHROPIC_API_KEY="sk-ant-api03-..."
+TELEGRAM_BOT_TOKEN="..."
+```
+
+> `NEXTAUTH_URL` deve ser `http://72.61.78.176` — sem porta e sem `/` no final.
+> Não usar `localhost` — quebra o cookie de sessão.
 
 ---
 
 ## Checklist de Deploy (atualizações de código)
 
-### 1. Local (Windows) — antes de subir
+### 1. Local — antes de subir
 
-- [ ] Rodar `npx prisma generate` se mudou o schema
-- [ ] Verificar TypeScript: `npx tsc --noEmit`
-- [ ] Testar build local: `npm run build`
-- [ ] Commitar **tudo** (incluindo migrations novas se houver)
-- [ ] `git push origin master`
+```powershell
+# Gerar Prisma Client
+npx prisma generate
 
-### 2. Na VPS — acesso SSH
+# Verificar TypeScript (deve retornar sem erros)
+npx tsc --noEmit
+
+# Commitar e subir
+git add <arquivos>
+git commit -m "feat: ..."
+git push origin master
+```
+
+> O build local (`npm run build`) falha por causa do OneDrive interferindo nos symlinks do `.next`.
+> Isso é normal — o build real ocorre dentro do Docker na VPS.
+
+### 2. Na VPS — via SSH
 
 ```bash
-ssh root@<IP_DA_VPS>
+ssh root@72.61.78.176
+# senha: Geral244095441
 cd /var/www/camserv-crm
 ```
 
 ### 3. Atualizar código
 
 ```bash
-git checkout -- Dockerfile   # só se editou Dockerfile direto na VPS
 git pull origin master
 ```
 
-> Se aparecer conflito em outro arquivo: `git stash && git pull && git stash pop`
+> Se aparecer conflito: `git stash && git pull && git stash pop`
 
-### 4. Aplicar migrations (se houver alteração no banco)
+### 4. Se mudou o schema Prisma — aplicar colunas novas no banco
 
+Conectar no banco como superuser:
 ```bash
-psql -h localhost -U camserv_app -d camserv_crm \
-  < database/migrations/<nome_do_arquivo>.sql
+docker exec -it supabase_supabase-db-1 psql -U postgres -d camserv_crm
 ```
 
-> Verificar se o tipo já existe antes de criar: o script deve ter `IF NOT EXISTS` ou testar manualmente com `\dT` no psql.
+Aplicar as alterações manualmente com `ALTER TABLE ... ADD COLUMN IF NOT EXISTS ...`
+
+Após aplicar, verificar permissões do `camserv_app` na tabela nova:
+```sql
+GRANT ALL ON TABLE <nome_tabela> TO camserv_app;
+```
 
 ### 5. Rebuild e restart do container
 
@@ -75,92 +109,107 @@ docker compose up -d
 docker compose ps
 curl -s http://localhost:3001/api/health
 # Esperado: {"ok":true}
-```
 
-```bash
-docker logs camserv-crm --tail 50
-# Verificar: sem erros de Prisma, sem "type does not exist"
+docker logs camserv-crm --tail 30
+# Não deve ter erros de Prisma
 ```
 
 ### 7. Testar no browser
 
-Abrir `http://<IP_DA_VPS>` em aba anônima (evita cache).
+Abrir em **aba anônima**: `http://72.61.78.176`
 
 ---
 
 ## Checklist de Teste Pós-Deploy
 
-- [ ] Login como **gestor** (`rafael@camserv.com.br`)
-- [ ] Login como **vendedor**
-- [ ] Cadastrar vendedor
-- [ ] Cadastrar cliente (testar campo "origem": indicação, cold-call etc.)
-- [ ] Cadastrar produto (tipo: serviço, produto)
-- [ ] Criar oportunidade **selecionando um produto/serviço** e mover no kanban
-- [ ] Confirmar que o badge do produto aparece no card do kanban
-- [ ] Filtrar o pipeline pelo produto cadastrado
-- [ ] Registrar atividade na oportunidade
-- [ ] Criar tarefa vinculada a cliente/oportunidade
-- [ ] Editar tarefa → preencher "Registrar Conversa" → abrir a oportunidade e confirmar que a interação aparece no histórico
-- [ ] Verificar dashboard (cards de KPI, ranking de vendedores para gestor)
-- [ ] Clicar no sino de notificações
-- [ ] Acessar página de Contatos
+- [ ] Login como **gestor** (`rafael@camserv.com.br` / `Camserv@2026`)
+- [ ] Dashboard carrega KPIs
+- [ ] Página Clientes mostra registros
+- [ ] Pipeline carrega oportunidades
+- [ ] `/monitor` — dashboard da IA carrega
+- [ ] `/copiloto` — lista de ordens de serviço carrega
 
 ---
 
-## Armadilhas conhecidas (já resolvidas)
+## Procedimento para nova coluna no banco
+
+Sempre que o `prisma/schema.prisma` ganhar um campo novo em uma model existente:
+
+1. Identificar a tabela (`@@map`) e a coluna (`@map`) no schema
+2. Conectar: `docker exec -it supabase_supabase-db-1 psql -U postgres -d camserv_crm`
+3. Aplicar: `ALTER TABLE <tabela> ADD COLUMN IF NOT EXISTS <coluna> <tipo>;`
+4. Garantir permissão: `GRANT ALL ON TABLE <tabela> TO camserv_app;`
+5. Reiniciar container: `docker restart camserv-crm`
+
+### Mapeamento de tipos Prisma → PostgreSQL
+
+| Prisma | PostgreSQL |
+|---|---|
+| `String` | `TEXT` |
+| `String @db.Uuid` | `UUID` |
+| `Int` | `INTEGER` |
+| `Float` | `NUMERIC` |
+| `Boolean` | `BOOLEAN` |
+| `DateTime` | `TIMESTAMP WITH TIME ZONE` |
+| `DateTime @db.Date` | `DATE` |
+| `Json` | `JSONB` |
+
+---
+
+## Armadilhas conhecidas
 
 | Problema | Causa | Solução |
 |---|---|---|
-| `git pull` abortado | Dockerfile editado diretamente na VPS | `git checkout -- Dockerfile` antes do pull |
-| Container com nome duplicado | `docker rm` não foi feito antes | `docker rm -f camserv-crm` |
-| CSS/JS não carregam | Cache do browser | Abrir em aba anônima |
-| Porta 80 ocupada pelo Traefik | Traefik é Swarm service, não para com `docker stop` | `docker service scale easypanel-traefik=0` |
-| Porta 3000 ocupada pelo Easypanel | Conflito com app | App usa PORT=3001 no `.env` |
-| `type "UserRole" does not exist` | PostgreSQL criou enums em snake_case, Prisma espera PascalCase | `ALTER TYPE user_role RENAME TO "UserRole"` (já feito) |
-| `Invalid value for argument 'type'` | Form envia "serviço" mas Prisma espera "servico" | `enum-maps.ts` + `mapEnum()` nas rotas (já feito) |
-| Login com senha errada | schema.sql tem hash placeholder | Gerar hash real: `node -e "require('bcryptjs').hash('senha',10).then(console.log)"` e fazer UPDATE no banco |
-| `curl ifconfig.me` retorna IPv6 | VPS tem IPv6 habilitado | Usar `curl -s -4 ifconfig.me` para forçar IPv4 |
+| Login não entra (sem erro) | `NEXTAUTH_URL` errado ou `localhost` na VPS | Corrigir para `http://72.61.78.176` no `.env` da VPS |
+| Cookie de sessão não funciona em HTTP | NextAuth usa `Secure` em produção | Fix em `src/lib/auth.ts` — detecta HTTP automaticamente |
+| `git pull` abortado | Arquivo editado direto na VPS | `git stash && git pull && git stash pop` |
+| Container com nome duplicado | `docker rm` não feito | `docker rm -f camserv-crm` antes do `up` |
+| `column does not exist` (Prisma) | Schema mudou mas banco não foi migrado | Ver procedimento acima para nova coluna |
+| `permission denied for table` | Tabela nova sem GRANT para `camserv_app` | `GRANT ALL ON TABLE <tabela> TO camserv_app;` |
+| Build local falha no `.next` | OneDrive bloqueia symlinks | Normal — build ocorre na VPS |
+| Fonte Google falha no build local | Certificado SSL corporativo | `NODE_TLS_REJECT_UNAUTHORIZED=0` no build local |
+| Porta 3000 ocupada | Easypanel usa porta 3000 | App usa `PORT=3001` — nunca mudar |
+| `camserv-crm` unhealthy | Healthcheck aponta para porta 3000 no compose | Corrigir healthcheck para porta 3001 |
 
 ---
 
 ## Comandos úteis
 
 ```bash
-# Ver logs em tempo real
+# Logs em tempo real
 docker logs -f camserv-crm
 
-# Entrar no container
+# Entrar no container do app
 docker exec -it camserv-crm sh
 
-# Conectar ao banco
-psql -h localhost -U camserv_app -d camserv_crm
+# Conectar ao banco como superuser
+docker exec -it supabase_supabase-db-1 psql -U postgres -d camserv_crm
 
-# Ver tipos do banco
-\dT
+# Conectar ao banco como app user
+psql -h 172.16.2.12 -U camserv_app -d camserv_crm
 
-# Listar enums e valores
-SELECT typname, enumlabel FROM pg_enum JOIN pg_type ON pg_enum.enumtypid = pg_type.oid ORDER BY typname;
+# Listar tabelas
+\dt
 
-# Reiniciar Nginx
-systemctl restart nginx
+# Ver estrutura de uma tabela
+\d <nome_tabela>
+
+# Ver permissões do camserv_app
+SELECT grantee, table_name, privilege_type
+FROM information_schema.role_table_grants
+WHERE grantee = 'camserv_app'
+ORDER BY table_name;
+
+# Reiniciar app sem rebuild
+docker restart camserv-crm
 
 # Status dos containers
 docker compose ps
 
-# Ver IP público (IPv4)
-curl -s -4 ifconfig.me
-```
-
----
-
-## Variáveis de ambiente necessárias (`.env`)
-
-```env
-DATABASE_URL=postgresql://camserv_app:<senha>@localhost:5432/camserv_crm
-NEXTAUTH_URL=http://<IP_VPS>
-NEXTAUTH_SECRET=<string_aleatoria_longa>
-PORT=3001
-NODE_ENV=production
+# Gerar hash bcrypt para senha (no container do app)
+docker exec camserv-crm node -e "require('bcryptjs').hash('SENHA', 10).then(console.log)"
+# Se falhar, usar /tmp:
+cd /tmp && npm install bcryptjs && node -e "require('/tmp/node_modules/bcryptjs').hash('SENHA', 10).then(console.log)"
 ```
 
 ---
@@ -168,15 +217,11 @@ NODE_ENV=production
 ## Deploy de emergência (rollback)
 
 ```bash
-# Ver imagens disponíveis
-docker images camserv-crm
+# Taguear antes de cada deploy
+docker tag camserv-crm:latest camserv-crm:backup-$(date +%Y%m%d)
 
-# Subir versão anterior (se tiver tag)
+# Rollback para versão anterior
 docker rm -f camserv-crm
-docker run -d --name camserv-crm --env-file .env --network host camserv-crm:<tag_anterior>
+docker run -d --name camserv-crm --env-file /var/www/camserv-crm/.env \
+  --network host camserv-crm:<tag_anterior>
 ```
-
-> Boas práticas: antes de cada deploy em produção, taguear a imagem atual:
-> ```bash
-> docker tag camserv-crm:latest camserv-crm:backup-$(date +%Y%m%d)
-> ```
