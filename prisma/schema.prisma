@@ -423,6 +423,7 @@ model Interacao {
   clientId    String   @map("client_id") @db.Uuid
   osId        String?  @map("os_id") @db.Uuid
   canal       Canal
+  canalId     String?  @map("canal_id")
   direcao     String
   mensagem    String
   geradoPorIa Boolean  @default(false) @map("gerado_por_ia")
@@ -442,6 +443,7 @@ model LogAgente {
   tenantId  String     @map("tenant_id") @db.Uuid
   agente    AgenteNome
   acao      String
+  osId      String?    @map("os_id") @db.Uuid
   input     Json
   output    Json
   sucesso   Boolean    @default(true)
